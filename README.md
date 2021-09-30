@@ -1,4 +1,4 @@
-# FSP-autumn2021
+# NOTE 
 ## week1
 gcc -o myls myls.c -I ../include/ -L ../lib/ -lapue
 ## week2
