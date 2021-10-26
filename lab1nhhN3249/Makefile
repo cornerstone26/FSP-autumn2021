@@ -1,5 +1,5 @@
 CFLAGS=-Wall -Wextra -Werror -O2
-TARGETS=lab1test lab1call libavg.so
+TARGETS=lab1test lab1nhhN3249 libnhhN3249.so
 
 .PHONY: all clean
 
@@ -11,10 +11,10 @@ clean:
 lab1test: lab1test.c plugin_api.h
 	gcc $(CFLAGS) -o lab1test lab1test.c -ldl
 
-lab1call: lab1call.c plugin_api.h
-	gcc $(CFLAGS) -o lab1call lab1call.c -ldl
+lab1nhhN3249: lab1nhhN3249.c plugin_api.h
+	gcc $(CFLAGS) -o lab1nhhN3249 lab1nhhN3249.c -ldl
 
-libavg.so: libavg.c plugin_api.h
-	gcc $(CFLAGS) -shared -fPIC -o libavg.so libavg.c -ldl -lm
+libnhhN3249.so: libnhhN3249.c plugin_api.h
+	gcc $(CFLAGS) -shared -fPIC -o libnhhN3249.so libnhhN3249.c -ldl -lm
 
 
