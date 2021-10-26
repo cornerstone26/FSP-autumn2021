@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
     }
     
     // Name of the lib. Should be passed as the first argument.
-    char *lib_name = strdup(argv[1]);
+    char *lib_name = strdup(argv[1]); 
     
     // Name of the file to analyze. Should be passed as the last argumtent.
     char *file_name = strdup(argv[argc-1]);
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
         goto END;
     }
     
-    typedef int (*pgi_func_t)(struct plugin_info*);
+    typedef int (*pgi_func_t)(struct plugin_info*);     //
     pgi_func_t pgi_func = (pgi_func_t)func;            
 
     int ret = pgi_func(&pi);
@@ -87,27 +87,27 @@ int main(int argc, char *argv[]) {
         goto END;
     }
     
-    typedef int (*ppf_func_t)(const char*, struct option*, size_t);
-    ppf_func_t ppf_func = (ppf_func_t)func;            
+    typedef int (*ppf_func_t)(const char*, struct option*, size_t); //định nghĩa lại tên kiểu dữ liệu
+    ppf_func_t ppf_func = (ppf_func_t)func;                         // khai báo
    
     // Prepare array of options for getopt_long
-    longopts = calloc(pi.sup_opts_len + 1, sizeof(struct option));
+    longopts = calloc(pi.sup_opts_len + 1, sizeof(struct option));  // cấp phát bộ nhớ động
     if (!longopts) {
         fprintf(stderr, "ERROR: calloc() failed: %s\n", strerror(errno));
         goto END;
     }
     
-    // Copy option information
+    // Copy option information                                      
     for (size_t i = 0; i < pi.sup_opts_len; i++) {
         // Mind this!
         // getopt_long() requires array of struct option in its longopts arg,
         // but pi.sup_opts is array of plugin_option structs, not option structs.
-        memcpy(longopts + i, &pi.sup_opts[i].opt, sizeof(struct option));
+        memcpy(longopts + i, &pi.sup_opts[i].opt, sizeof(struct option));   // Gán giá trị của các option vào mảng
     }
     
     // Prepare array of actually used options that will be passed to 
     // plugin_process_file() (Maximum pi.sup_opts_len options)
-    opts_to_pass = calloc(pi.sup_opts_len, sizeof(struct option));
+    opts_to_pass = calloc(pi.sup_opts_len, sizeof(struct option));  //cấp phát bộ nhớ
     if (!opts_to_pass) {
         fprintf(stderr, "ERROR: calloc() failed: %s\n", strerror(errno));
         goto END;
@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "ERROR: failed to parse options\n");
             goto END;
         }
-
+//kiểm tra lỗi chính tả
 #ifndef ALLOW_OPT_ABBREV
         // glibc quirk: no proper way to disable option abbreviations
         // https://stackoverflow.com/questions/5182041/turn-off-abbreviation-in-getopt-long-optarg-h

@@ -35,17 +35,17 @@ static char *g_plugin_author = "Alexei Guirik";
 
 static struct plugin_option g_po_arr[] = {
 /*
-    struct plugin_option {
+    struct plugin_option { // cấu trúc option
         struct option {
-           const char *name;
-           int         has_arg;
-           int        *flag;
-           int         val;
+           const char *name;    // tên option
+           int         has_arg; // cần đối số/ không cần đối số
+           int        *flag;    // cờ -A -O -N
+           int         val;     // trả về kết quả của flags
         } opt,
         char *opt_descr
     }
 */
-    {
+    { // tên từng option
         {
             OPT_ENTROPY_STR,
             required_argument,
@@ -72,7 +72,7 @@ static struct plugin_option g_po_arr[] = {
     
 };
 
-static int g_po_arr_len = sizeof(g_po_arr)/sizeof(g_po_arr[0]);
+static int g_po_arr_len = sizeof(g_po_arr)/sizeof(g_po_arr[0]); // lấy kích thước của mảng g_po_arr
 
 //
 //  Private functions
@@ -82,7 +82,7 @@ static double calculate_entropy(unsigned char*, size_t, size_t);
 //
 //  API functions
 //
-int plugin_get_info(struct plugin_info* ppi) {
+int plugin_get_info(struct plugin_info* ppi) {  // in thông tin -v
     if (!ppi) {
         fprintf(stderr, "ERROR: invalid argument\n");
         return -1;
@@ -96,20 +96,20 @@ int plugin_get_info(struct plugin_info* ppi) {
     return 0;
 }
 
-int plugin_process_file(const char *fname,
-        struct option in_opts[],
-        size_t in_opts_len) {
+int plugin_process_file(const char *fname,  // tên file truyền vào
+        struct option in_opts[],            // option
+        size_t in_opts_len) {               // kích thước của option
 
     // Return error by default
-    int ret = -1;
+    int ret = -1;                           // mặc định là nếu lỗi thì trả về -1
     
     // Pointer to file mapping
-    unsigned char *ptr = NULL;
+    unsigned char *ptr = NULL;          
     
-    char *DEBUG = getenv("LAB1DEBUG");
+    char *DEBUG = getenv("LAB1DEBUG");      // biến môi trường
     
-    if (!fname || !in_opts || !in_opts_len) {
-        errno = EINVAL;
+    if (!fname || !in_opts || !in_opts_len) {   // thiếu tham số truyền vào
+        errno = EINVAL;                         //
         return -1;
     }
     
@@ -123,7 +123,9 @@ int plugin_process_file(const char *fname,
     double entropy = 0.0;
     size_t offset_from = 0, offset_to = 0;
     int got_entropy = 0, got_offset_from = 0, got_offset_to = 0;
-
+// lấy tham số truyền vào
+// strod lấy cả phần thập phân, strol chỉ lấy phần nguyên
+// endptr khác '\0' nghĩa là truyền vào kí tự
 #define OPT_CHECK(opt_var, is_double) \
     if (got_##opt_var) { \
         if (DEBUG) { \
@@ -164,7 +166,7 @@ int plugin_process_file(const char *fname,
             return -1;
         }
     }
-    
+    // nếu got_entropy = 0 thì in ra lỗi
     if (!got_entropy) {
         if (DEBUG) {
             fprintf(stderr, "DEBUG: %s: Entropy value was not supplied.\n",
@@ -183,45 +185,45 @@ int plugin_process_file(const char *fname,
         errno = ERANGE;
         return -1;
     }
-    
+    //in ra đối số truyền vào
     if (DEBUG) {
         fprintf(stderr, "DEBUG: %s: Inputs: entropy = %lf, offset_from = %ld, offset_to = %ld\n",
             g_lib_name, entropy, offset_from, offset_to);
     }
     
-    int saved_errno = 0;
+    int saved_errno = 0;    //khai báo lỗi
     
-    int fd = open(fname, O_RDONLY);
+    int fd = open(fname, O_RDONLY);     // mở file chỉ đọc
     if (fd < 0) {
         // errno is set by open()
         return -1;
     }
     
-    struct stat st = {0};
-    int res = fstat(fd, &st);
+    struct stat st = {0};   // fstat()
+    int res = fstat(fd, &st);       //lưu địa chỉ của file vào st
     if (res < 0) {
         saved_errno = errno;
-        goto END;
+        goto END;   // đến END
     }
     
     // Check that size of file is > 0
-    if (st.st_size == 0) {
+    if (st.st_size == 0) { // kiểm tra kích thước của file
         if (DEBUG) {
             fprintf(stderr, "DEBUG: %s: File size should be > 0\n",
                 g_lib_name);
         }
-        saved_errno = ERANGE;
+        saved_errno = ERANGE; // lỗi khoảng giá trị
         goto END;
     }
     
     // Check starting offset
-    if (offset_from >= (size_t)st.st_size) {
+    if (offset_from >= (size_t)st.st_size) {    // vị trí bắt đầu check
         saved_errno = ERANGE;
         goto END;
     }
     
     // Check ending offset
-    if (offset_to == 0 || offset_to >= (size_t)st.st_size) {
+    if (offset_to == 0 || offset_to >= (size_t)st.st_size) { //gàn vị trí kiểm tra cuối cùng cho vị trí cuối cungf của file
         offset_to = st.st_size - 1;
         if (DEBUG) {
             fprintf(stderr, "DEBUG: %s: Corrected offset_to to %ld\n",
@@ -240,8 +242,8 @@ int plugin_process_file(const char *fname,
     }
     
     
-    ptr = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (ptr == MAP_FAILED) {
+    ptr = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);   //mở file ra đọc
+    if (ptr == MAP_FAILED) { // không thể mở
         saved_errno = errno;
         goto END;
     }
