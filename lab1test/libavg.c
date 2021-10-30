@@ -39,7 +39,7 @@ static struct plugin_option g_po_arr[] = {
         struct option {
            const char *name;    // tên option
            int         has_arg; // cần đối số/ không cần đối số
-           int        *flag;    // cờ -A -O -N
+           int        *flag;    // cờ 
            int         val;     // trả về kết quả của flags
         } opt,
         char *opt_descr

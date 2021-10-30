@@ -39,7 +39,7 @@ static struct plugin_option g_po_arr[] = {
         struct option {
            const char *name;    // tên option
            int         has_arg; // cần đối số/ không cần đối số
-           int        *flag;    // cờ -A -O -N
+           int        *flag;    // cờ 
            int         val;     // trả về kết quả của flags
         } opt,
         char *opt_descr
@@ -52,24 +52,7 @@ static struct plugin_option g_po_arr[] = {
             0, 0,
         },
         "Target value of entropy"
-    },
-    {
-        {
-            OPT_OFFSET_FROM_STR,
-            required_argument,
-            0, 0,
-        },
-        "Start offset"
-    },
-    {
-        {
-            OPT_OFFSET_TO_STR,
-            required_argument,
-            0, 0,
-        },
-        "End offset"
-    },
-    
+    }    
 };
 
 static int g_po_arr_len = sizeof(g_po_arr)/sizeof(g_po_arr[0]); // lấy kích thước của mảng g_po_arr
