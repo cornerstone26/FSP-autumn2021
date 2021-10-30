@@ -1,14 +1,3 @@
-//
-// Example library for Lab 1
-// Allows to calculate entropy of file or its part
-//
-// gcc -shared -fPIC libavgN0000.c -o libavgN0000.so -ldl -lm
-//
-//  (c) Alexei Guirik, 2021
-//  This source is licensed under CC BY-NC 4.0
-//  (https://creativecommons.org/licenses/by-nc/4.0/)
-//  
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -23,11 +12,11 @@
 #include "plugin_api.h"
 
 
-static char *g_lib_name = "libavg.so";
+static char *g_lib_name = "libnhhN3249.so";
 
-static char *g_plugin_purpose = "Check if entropy of a file or its part is less than the given value";
+static char *g_plugin_purpose = "Search for files containing a given sequence of bits.";
 
-static char *g_plugin_author = "Alexei Guirik";
+static char *g_plugin_author = "Nguyen Hong Hanh";
 
 #define OPT_ENTROPY_STR "entropy"
 #define OPT_OFFSET_FROM_STR "offset-from"
