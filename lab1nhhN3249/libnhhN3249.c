@@ -18,9 +18,8 @@ static char *g_plugin_purpose = "Search for files containing a given sequence of
 
 static char *g_plugin_author = "Nguyen Hong Hanh";
 
-#define OPT_ENTROPY_STR "entropy"
-#define OPT_OFFSET_FROM_STR "offset-from"
-#define OPT_OFFSET_TO_STR "offset-to"
+#define OPT_BIT_SEQ "bit-seq"
+
 
 static struct plugin_option g_po_arr[] = {
 /*
@@ -28,7 +27,7 @@ static struct plugin_option g_po_arr[] = {
         struct option {
            const char *name;    // tên option
            int         has_arg; // cần đối số/ không cần đối số
-           int        *flag;    // cờ -A -O -N
+           int        *flag;    // cờ
            int         val;     // trả về kết quả của flags
         } opt,
         char *opt_descr
@@ -36,41 +35,17 @@ static struct plugin_option g_po_arr[] = {
 */
     { // tên từng option
         {
-            OPT_ENTROPY_STR,
+            OPT_BIT_SEQ,
             required_argument,
             0, 0,
         },
-        "Target value of entropy"
-    },
-    {
-        {
-            OPT_OFFSET_FROM_STR,
-            required_argument,
-            0, 0,
-        },
-        "Start offset"
-    },
-    {
-        {
-            OPT_OFFSET_TO_STR,
-            required_argument,
-            0, 0,
-        },
-        "End offset"
-    },
+        "bit-seq"
+    }
     
 };
 
 static int g_po_arr_len = sizeof(g_po_arr)/sizeof(g_po_arr[0]); // lấy kích thước của mảng g_po_arr
 
-//
-//  Private functions
-//
-static double calculate_entropy(unsigned char*, size_t, size_t);
-
-//
-//  API functions
-//
 int plugin_get_info(struct plugin_info* ppi) {  // in thông tin -v
     if (!ppi) {
         fprintf(stderr, "ERROR: invalid argument\n");
@@ -109,13 +84,11 @@ int plugin_process_file(const char *fname,  // tên file truyền vào
         }
     }
     
-    double entropy = 0.0;
-    size_t offset_from = 0, offset_to = 0;
-    int got_entropy = 0, got_offset_from = 0, got_offset_to = 0;
+    char bit_seq = '\0';
 // lấy tham số truyền vào
 // strod lấy cả phần thập phân, strol chỉ lấy phần nguyên
 // endptr khác '\0' nghĩa là truyền vào kí tự
-#define OPT_CHECK(opt_var, is_double) \
+/*#define OPT_CHECK(opt_var, is_double) \
     if (got_##opt_var) { \
         if (DEBUG) { \
             fprintf(stderr, "DEBUG: %s: Option '%s' was already supplied\n", \
@@ -179,7 +152,7 @@ int plugin_process_file(const char *fname,  // tên file truyền vào
         fprintf(stderr, "DEBUG: %s: Inputs: entropy = %lf, offset_from = %ld, offset_to = %ld\n",
             g_lib_name, entropy, offset_from, offset_to);
     }
-    
+    */
     int saved_errno = 0;    //khai báo lỗi
     
     int fd = open(fname, O_RDONLY);     // mở file chỉ đọc
@@ -204,41 +177,15 @@ int plugin_process_file(const char *fname,  // tên file truyền vào
         saved_errno = ERANGE; // lỗi khoảng giá trị
         goto END;
     }
-    
-    // Check starting offset
-    if (offset_from >= (size_t)st.st_size) {    // vị trí bắt đầu check
-        saved_errno = ERANGE;
-        goto END;
-    }
-    
-    // Check ending offset
-    if (offset_to == 0 || offset_to >= (size_t)st.st_size) { //gàn vị trí kiểm tra cuối cùng cho vị trí cuối cungf của file
-        offset_to = st.st_size - 1;
-        if (DEBUG) {
-            fprintf(stderr, "DEBUG: %s: Corrected offset_to to %ld\n",
-                g_lib_name, offset_to);
-        }
-    }
-    
-    // Check for incorrect offset values
-    if (offset_from >= offset_to) {
-        if (DEBUG) {
-            fprintf(stderr, "DEBUG: %s: offset_from (%ld) >= offset_to to (%ld)\n",
-                g_lib_name, offset_from, offset_to);
-        }        
-        saved_errno = ERANGE;
-        goto END;
-    }
-    
-    
+        
     ptr = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);   //mở file ra đọc
     if (ptr == MAP_FAILED) { // không thể mở
         saved_errno = errno;
         goto END;
     }
         
-    double calc_entropy = 0.0;
-    calc_entropy = calculate_entropy(ptr, offset_from, offset_to);
+    //double calc_entropy = 0.0;
+    //calc_entropy = calculate_entropy(ptr, offset_from, offset_to);
     
     if (DEBUG) {
         fprintf(stderr, "DEBUG: %s: Calculated entropy = %lf\n", 
@@ -246,7 +193,7 @@ int plugin_process_file(const char *fname,  // tên file truyền vào
     }
     
     // 0 or 1
-    ret = calc_entropy >= entropy;
+    //ret = calc_entropy >= entropy;
     
     END:
     close(fd);
@@ -257,24 +204,3 @@ int plugin_process_file(const char *fname,  // tên file truyền vào
     
     return ret;
 }        
-
-double calculate_entropy(unsigned char *p, size_t offset_from, size_t offset_to) { 
-    size_t freq_table[256] = {0};
-    unsigned char *ptr = p + offset_from, *pend = p + offset_to;
-    
-    while (ptr <= pend) {
-        freq_table[ *ptr++ ] += 1;
-    }
-
-    size_t total_size = offset_to - offset_from + 1;
-    double total_entropy = 0.0;
-    
-    for (int i = 0; i < 256; i++) {
-        double prob = (double)freq_table[i] / total_size;
-        if (prob > 0) {
-            total_entropy -= prob * log2(prob);
-        }
-    }
-    
-    return total_entropy/8;
-}
