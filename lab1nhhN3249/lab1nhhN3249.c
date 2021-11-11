@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
     // Minimum number of arguments is 4: 
     // $ program_name lib_name --opt1 file_to_check
     if (argc < 4) {        
-        fprintf(stdout, "Usage: lab1call /path/to/libabcNXXXX.so [options_for_lib] /path/to/file\n");
+        fprintf(stdout, "Usage: lab1nhhN3249 /path/to/libnhhN3249.so [--bit-seq] /path/to/file\n");
         return 0;
     }
     
