@@ -1,16 +1,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
-
+#include <stdarg.h>
 #include "plugin_api.h"
-
 
 static char *g_lib_name = "libnhhN3249.so";
 
@@ -20,20 +18,22 @@ static char *g_plugin_author = "Nguyen Hong Hanh";
 
 #define OPT_BIT_SEQ "bit-seq"
 
+int bit_seq_match(FILE *pFile, long long pattern, size_t pSize);
+long long get_pattern(char* pat);
 
 static struct plugin_option g_po_arr[] = {
 /*
     struct plugin_option { // cấu trúc option
         struct option {
-           const char *name;    // tên option
-           int         has_arg; // cần đối số/ không cần đối số
-           int        *flag;    // cờ
-           int         val;     // trả về kết quả của flags
+           const char *name;    
+           int         has_arg; 
+           int        *flag;    
+           int         val;     
         } opt,
         char *opt_descr
     }
 */
-    { // tên từng option
+    { 
         {
             OPT_BIT_SEQ,
             required_argument,
@@ -68,7 +68,8 @@ int plugin_process_file(const char *fname,  // tên file truyền vào
     int ret = -1;                           // mặc định là nếu lỗi thì trả về -1
     
     // Pointer to file mapping
-    unsigned char *ptr = NULL;          
+
+    //unsigned char *ptr = NULL;          
     
     char *DEBUG = getenv("LAB1DEBUG");      // biến môi trường
     
@@ -83,124 +84,115 @@ int plugin_process_file(const char *fname,  // tên file truyền vào
                 g_lib_name, in_opts[i].name, (char*)in_opts[i].flag);
         }
     }
-    
-    char bit_seq = '\0';
-// lấy tham số truyền vào
-// strod lấy cả phần thập phân, strol chỉ lấy phần nguyên
-// endptr khác '\0' nghĩa là truyền vào kí tự
-/*#define OPT_CHECK(opt_var, is_double) \
-    if (got_##opt_var) { \
-        if (DEBUG) { \
-            fprintf(stderr, "DEBUG: %s: Option '%s' was already supplied\n", \
-                g_lib_name, in_opts[i].name); \
-        } \
-        errno = EINVAL; \
-        return -1; \
-    } \
-    else { \
-        char *endptr = NULL; \
-        opt_var = is_double ? \
-                    strtod((char*)in_opts[i].flag, &endptr): \
-                    strtol((char*)in_opts[i].flag, &endptr, 0); \
-        if (*endptr != '\0') { \
-            if (DEBUG) { \
-                fprintf(stderr, "DEBUG: %s: Failed to convert '%s'\n", \
-                    g_lib_name, (char*)in_opts[i].flag); \
-            } \
-            errno = EINVAL; \
-            return -1; \
-        } \
-        got_##opt_var = 1; \
-    }
-    
+  
+    char* pat = NULL;
+    size_t pat_size = 0;
+    int got_bit_seq = 0;
+    long long pattern = 0;
     for (size_t i = 0; i < in_opts_len; i++) {
-        if (!strcmp(in_opts[i].name, OPT_ENTROPY_STR)) {
-            OPT_CHECK(entropy, 1)
+        if (!strcmp(in_opts[i].name, OPT_BIT_SEQ)) {
+          pat = (char*) in_opts[i].flag;
+        } 
+        char *endptr = NULL;
+        int base = 0; //default in base 10 
+        if ((!memcmp(pat, "0x", 2)) || (!memcmp(pat, "0X", 2))){
+          base = 16;
+          pat_size = strlen(pat)/4 + 1;
+        } else if ((!memcmp(pat, "0b", 2)) || (!memcmp(pat, "0B", 2))){
+          base = 2;
+          pat = &pat[2]; // remove "0b"/"0B"
+          pat_size = strlen(pat)/8 + 1;
+        } 
+        pattern = strtoll(pat, &endptr, base);
+        got_bit_seq = 1;
+        if (*endptr != '\0') { 
+          got_bit_seq = 0;
+          if (DEBUG) { 
+              fprintf(stderr, "DEBUG: %s: Failed to convert '%s'\n", 
+                  g_lib_name, pat); 
+          } 
+          errno = EINVAL; 
+          return -1; 
         }
-        else if (!strcmp(in_opts[i].name, OPT_OFFSET_FROM_STR)) {
-            OPT_CHECK(offset_from, 0)
-        }
-        else if (!strcmp(in_opts[i].name, OPT_OFFSET_TO_STR)) {
-            OPT_CHECK(offset_to, 0)
-        }
-        else {
-            errno = EINVAL;
-            return -1;
-        }
-    }
-    // nếu got_entropy = 0 thì in ra lỗi
-    if (!got_entropy) {
+
+         //in ra đối số truyền vào
         if (DEBUG) {
-            fprintf(stderr, "DEBUG: %s: Entropy value was not supplied.\n",
+            fprintf(stderr, "DEBUG: %s: Inputs: bit_seq = %s\n",
+                g_lib_name, pat);
+        }
+
+        sprintf(pat, "%x", pattern);
+        printf("pattern in binary %s\n", pat);
+    }
+    
+    // nếu got_entropy = 0 thì in ra lỗi
+    if (!got_bit_seq) {
+        if (DEBUG) {
+            fprintf(stderr, "DEBUG: %s: Bit sequence value was not supplied.\n",
                 g_lib_name);
         }
         errno = EINVAL;
         return -1;
     }
     
-    // Entropy value should be in [0.0 .. 1.0)
-    if (entropy < 0 || entropy > 1.0) {
-        if (DEBUG) {
-            fprintf(stderr, "DEBUG: %s: Entropy should be in [0.0 .. 1.0)\n",
-                g_lib_name);
-        }
-        errno = ERANGE;
-        return -1;
-    }
-    //in ra đối số truyền vào
-    if (DEBUG) {
-        fprintf(stderr, "DEBUG: %s: Inputs: entropy = %lf, offset_from = %ld, offset_to = %ld\n",
-            g_lib_name, entropy, offset_from, offset_to);
-    }
-    */
     int saved_errno = 0;    //khai báo lỗi
-    
-    int fd = open(fname, O_RDONLY);     // mở file chỉ đọc
-    if (fd < 0) {
-        // errno is set by open()
-        return -1;
+    FILE *pFile = fopen(fname, "r");
+
+    int res = bit_seq_match(pFile, pattern, 1);
+    if (res == 0){
+        ret = 1;
+        printf("%s\n", realpath(fname, NULL));
     }
-    
-    struct stat st = {0};   // fstat()
-    int res = fstat(fd, &st);       //lưu địa chỉ của file vào st
-    if (res < 0) {
-        saved_errno = errno;
-        goto END;   // đến END
-    }
-    
-    // Check that size of file is > 0
-    if (st.st_size == 0) { // kiểm tra kích thước của file
-        if (DEBUG) {
-            fprintf(stderr, "DEBUG: %s: File size should be > 0\n",
-                g_lib_name);
-        }
-        saved_errno = ERANGE; // lỗi khoảng giá trị
-        goto END;
-    }
-        
-    ptr = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);   //mở file ra đọc
-    if (ptr == MAP_FAILED) { // không thể mở
-        saved_errno = errno;
-        goto END;
-    }
-        
-    //double calc_entropy = 0.0;
-    //calc_entropy = calculate_entropy(ptr, offset_from, offset_to);
-    
-    if (DEBUG) {
-        fprintf(stderr, "DEBUG: %s: Calculated entropy = %lf\n", 
-            g_lib_name, calc_entropy);
-    }
-    
-    // 0 or 1
-    //ret = calc_entropy >= entropy;
-    
-    END:
-    close(fd);
-    if (ptr != MAP_FAILED && ptr != NULL) munmap(ptr, st.st_size);
-    
-    // Restore errno value
+
     errno = saved_errno;
-    
     return ret;
-}        
+}  
+int bit_seq_match(FILE *pFile, long long pattern, size_t pSize){
+  size_t fSize;
+  char * buffer;
+  size_t result;
+
+  printf("%lld %ld\n", pattern, pSize);
+  if (pFile==NULL) {
+    fputs ("File error",stderr); 
+    exit (1);
+    }
+
+  // obtain file size:
+  fseek (pFile , 0 , SEEK_END);
+  fSize = ftell (pFile);
+  rewind (pFile);
+
+  // allocate memory to contain the whole file:
+  buffer = (char*) malloc (sizeof(char) *fSize);
+  if (buffer == NULL) {
+    fputs ("Memory error",stderr); 
+    exit (2);
+    }
+
+  // copy the file into the buffer:
+  result = fread (buffer,1,fSize,pFile);
+  if (result != fSize) {
+    fputs ("Reading error",stderr); 
+    exit (3);
+    }
+  /* the whole file is now loaded in the memory buffer. */
+
+  // search for bit pattern in file
+  size_t pos = 0;
+  while (pos < fSize){
+    if (memcmp(&buffer[pos], &pattern, pSize) == 0){
+      //printf("matched in %ld\n", pos);
+      return 0;
+    } else {
+      //printf("not found in %ld %d \n", pos, buffer[pos]);
+      pos++;
+    }
+  }
+     
+  fclose (pFile);
+  free (buffer);
+  return 1;
+  
+}
+
