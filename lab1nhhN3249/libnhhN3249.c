@@ -33,6 +33,7 @@ static struct plugin_option g_po_arr[] = {
            int         has_arg; 
            int        *flag;    
            int         val;     
+
         } opt,
         char *opt_descr
     }
@@ -43,6 +44,7 @@ static struct plugin_option g_po_arr[] = {
           required_argument,
           0, 0,
         },
+
         "bit-seq"
     },
     {
