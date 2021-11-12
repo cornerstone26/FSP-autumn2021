@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <math.h>
 #include "plugin_api.h"
 
 static char *g_lib_name = "libnhhN3249.so";
@@ -17,6 +18,9 @@ static char *g_plugin_purpose = "Search for files containing a given sequence of
 static char *g_plugin_author = "Nguyen Hong Hanh";
 
 #define OPT_BIT_SEQ "bit-seq"
+#define OPT_FOLDER "P"
+#define OPT_INFOR "v"
+
 
 int bit_seq_match(FILE *pFile, long long pattern, size_t pSize);
 long long get_pattern(char* pat);
@@ -35,12 +39,29 @@ static struct plugin_option g_po_arr[] = {
 */
     { 
         {
-            OPT_BIT_SEQ,
-            required_argument,
-            0, 0,
+          OPT_BIT_SEQ,
+          required_argument,
+          0, 0,
         },
         "bit-seq"
-    }
+    },
+    {
+        {
+          OPT_FOLDER,
+          required_argument,
+          0, 0,
+        },
+        "P"
+    },
+    {
+        {
+          OPT_INFOR,
+          0,
+          0, 0,
+        },
+        "v" 
+
+    },
     
 };
 
@@ -65,11 +86,7 @@ int plugin_process_file(const char *fname,  // tên file truyền vào
         size_t in_opts_len) {               // kích thước của option
 
     // Return error by default
-    int ret = -1;                           // mặc định là nếu lỗi thì trả về -1
-    
-    // Pointer to file mapping
-
-    //unsigned char *ptr = NULL;          
+    int ret = -1;                           // mặc định là nếu lỗi thì trả về -1      
     
     char *DEBUG = getenv("LAB1DEBUG");      // biến môi trường
     
@@ -94,16 +111,18 @@ int plugin_process_file(const char *fname,  // tên file truyền vào
           pat = (char*) in_opts[i].flag;
         } 
         char *endptr = NULL;
-        int base = 0; //default in base 10 
+        int base; 
         if ((!memcmp(pat, "0x", 2)) || (!memcmp(pat, "0X", 2))){
           base = 16;
-          pat_size = strlen(pat)/4 + 1;
         } else if ((!memcmp(pat, "0b", 2)) || (!memcmp(pat, "0B", 2))){
           base = 2;
           pat = &pat[2]; // remove "0b"/"0B"
-          pat_size = strlen(pat)/8 + 1;
-        } 
+        } else {
+          base = 10;
+        }
+
         pattern = strtoll(pat, &endptr, base);
+        //fprintf(stdout, "pat %s base %d endpoint %s\n",pat, base, endptr);
         got_bit_seq = 1;
         if (*endptr != '\0') { 
           got_bit_seq = 0;
@@ -115,17 +134,30 @@ int plugin_process_file(const char *fname,  // tên file truyền vào
           return -1; 
         }
 
-         //in ra đối số truyền vào
+        //fprintf(stdout, "%lld\n", pattern);
+        //in ra đối số truyền vào
         if (DEBUG) {
             fprintf(stderr, "DEBUG: %s: Inputs: bit_seq = %s\n",
                 g_lib_name, pat);
         }
 
-        sprintf(pat, "%x", pattern);
-        printf("pattern in binary %s\n", pat);
+        // get pattern size
+        
+        if (base == 16){
+          printf("***%s***\n", pat);
+          pat = &pat[2]; //remove 0x/0X
+          printf("***%s***\n", pat);
+          pat_size = ceil(strlen(pat)/4.0);
+        } else if (base == 2){
+          pat_size = ceil(strlen(pat)/8.0);
+        } else {
+          sprintf(pat, "%llx", pattern);
+          pat_size = ceil(strlen(pat)/4.0);
+        }
+      
+        //printf("pattern %s \n", pat);
     }
     
-    // nếu got_entropy = 0 thì in ra lỗi
     if (!got_bit_seq) {
         if (DEBUG) {
             fprintf(stderr, "DEBUG: %s: Bit sequence value was not supplied.\n",
@@ -136,23 +168,27 @@ int plugin_process_file(const char *fname,  // tên file truyền vào
     }
     
     int saved_errno = 0;    //khai báo lỗi
-    FILE *pFile = fopen(fname, "r");
+    FILE *pFile = fopen(fname, "rb");
 
-    int res = bit_seq_match(pFile, pattern, 1);
+    int res = bit_seq_match(pFile, pattern, pat_size);
     if (res == 0){
         ret = 1;
-        printf("%s\n", realpath(fname, NULL));
-    }
+        fprintf(stdout, "%s\n", realpath(fname, NULL));
+    } else if (res == 1){
+      fprintf(stdout, "Not found\n");
+      ret = 1;
+    } 
 
     errno = saved_errno;
     return ret;
 }  
+
 int bit_seq_match(FILE *pFile, long long pattern, size_t pSize){
   size_t fSize;
   char * buffer;
   size_t result;
 
-  printf("%lld %ld\n", pattern, pSize);
+  
   if (pFile==NULL) {
     fputs ("File error",stderr); 
     exit (1);
@@ -162,7 +198,7 @@ int bit_seq_match(FILE *pFile, long long pattern, size_t pSize){
   fseek (pFile , 0 , SEEK_END);
   fSize = ftell (pFile);
   rewind (pFile);
-
+  printf("%lld %ld %ld\n", pattern, pSize, fSize);
   // allocate memory to contain the whole file:
   buffer = (char*) malloc (sizeof(char) *fSize);
   if (buffer == NULL) {
@@ -179,13 +215,15 @@ int bit_seq_match(FILE *pFile, long long pattern, size_t pSize){
   /* the whole file is now loaded in the memory buffer. */
 
   // search for bit pattern in file
+  
+  //fprintf(stdout, "%x\n", buffer);
   size_t pos = 0;
-  while (pos < fSize){
+  while (fSize - pos >= pSize){
     if (memcmp(&buffer[pos], &pattern, pSize) == 0){
-      //printf("matched in %ld\n", pos);
+      //fprintf(stdout, "matched in %ld %x\n", pos, buffer[pos]);
       return 0;
     } else {
-      //printf("not found in %ld %d \n", pos, buffer[pos]);
+      //fprintf(stdout, "not found in %ld %x \n", pos, buffer[pos]);
       pos++;
     }
   }
