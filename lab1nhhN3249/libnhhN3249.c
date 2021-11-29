@@ -13,14 +13,13 @@
 
 static char *g_lib_name = "libnhhN3249.so";
 
-static char *g_plugin_purpose = "Search for files containing a given sequence of bits.";
+static char *g_plugin_purpose = "Variant 5: Search for files containing a given sequence of bits.";
 
-static char *g_plugin_author = "Nguyen Hong Hanh";
+static char *g_plugin_author = "Nguyen Hong Hanh N3249";
+
 
 #define OPT_BIT_SEQ "bit-seq"
-#define OPT_FOLDER "P"
-#define OPT_INFOR "v"
-
+#define OPT_TXT "txt"
 
 int bit_seq_match(FILE *pFile, long long pattern, size_t pSize);
 long long get_pattern(char* pat);
@@ -45,26 +44,18 @@ static struct plugin_option g_po_arr[] = {
           0, 0,
         },
 
-        "bit-seq"
-    },
-    {
-        {
-          OPT_FOLDER,
-          required_argument,
-          0, 0,
-        },
-        "P"
-    },
-    {
-        {
-          OPT_INFOR,
-          0,
-          0, 0,
-        },
-        "v" 
-
-    },
+        "A sequence of bits, you want to search for"
+    },    
     
+    { 
+        {
+          OPT_TXT,
+          no_argument,
+          0, 0,
+        },
+
+        "Search for text files"
+    },  
 };
 
 static int g_po_arr_len = sizeof(g_po_arr)/sizeof(g_po_arr[0]); // lấy kích thước của mảng g_po_arr
@@ -103,61 +94,65 @@ int plugin_process_file(const char *fname,  // tên file truyền vào
                 g_lib_name, in_opts[i].name, (char*)in_opts[i].flag);
         }
     }
-  
+    
     char* pat = NULL;
+    
     size_t pat_size = 0;
     int got_bit_seq = 0;
     long long pattern = 0;
     for (size_t i = 0; i < in_opts_len; i++) {
-        if (!strcmp(in_opts[i].name, OPT_BIT_SEQ)) {
-          pat = (char*) in_opts[i].flag;
-        } 
-        char *endptr = NULL;
-        int base; 
-        if ((!memcmp(pat, "0x", 2)) || (!memcmp(pat, "0X", 2))){
-          base = 16;
-        } else if ((!memcmp(pat, "0b", 2)) || (!memcmp(pat, "0B", 2))){
-          base = 2;
-          pat = &pat[2]; // remove "0b"/"0B"
-        } else {
-          base = 10;
-        }
-
-        pattern = strtoll(pat, &endptr, base);
-        //fprintf(stdout, "pat %s base %d endpoint %s\n",pat, base, endptr);
-        got_bit_seq = 1;
-        if (*endptr != '\0') { 
-          got_bit_seq = 0;
-          if (DEBUG) { 
-              fprintf(stderr, "DEBUG: %s: Failed to convert '%s'\n", 
-                  g_lib_name, pat); 
-          } 
-          errno = EINVAL; 
-          return -1; 
-        }
-
-        //fprintf(stdout, "%lld\n", pattern);
-        //in ra đối số truyền vào
-        if (DEBUG) {
-            fprintf(stderr, "DEBUG: %s: Inputs: bit_seq = %s\n",
-                g_lib_name, pat);
-        }
-
-        // get pattern size
-        
-        if (base == 16){
-          printf("***%s***\n", pat);
-          pat = &pat[2]; //remove 0x/0X
-          printf("***%s***\n", pat);
-          pat_size = ceil(strlen(pat)/4.0);
-        } else if (base == 2){
-          pat_size = ceil(strlen(pat)/8.0);
-        } else {
-          sprintf(pat, "%llx", pattern);
-          pat_size = ceil(strlen(pat)/4.0);
-        }
+      if (!strcmp(in_opts[i].name, OPT_BIT_SEQ)) {
+        pat = (char*) in_opts[i].flag;
+      }       
       
-        //printf("pattern %s \n", pat);
+      char *endptr = NULL;
+      int base; 
+      if ((!memcmp(pat, "0x", 2)) || (!memcmp(pat, "0X", 2))){
+        base = 16;
+      } else if ((!memcmp(pat, "0b", 2)) || (!memcmp(pat, "0B", 2))){
+        base = 2;
+        pat = &pat[2]; // remove "0b"/"0B"
+      } else {
+        base = 10;
+      }
+
+      pattern = strtoll(pat, &endptr, base);
+      //fprintf(stdout, "pat %s base %d endpoint %s\n",pat, base, endptr);
+      got_bit_seq = 1;
+      if (*endptr != '\0') { 
+        got_bit_seq = 0;
+        if (DEBUG) { 
+            fprintf(stderr, "DEBUG: %s: Failed to convert '%s'\n", 
+                g_lib_name, pat); 
+        } 
+        errno = EINVAL; 
+        return -1; 
+      }
+
+      //fprintf(stdout, "%lld\n", pattern);
+      //in ra đối số truyền vào
+      if (DEBUG) {
+          fprintf(stderr, "DEBUG: %s: Inputs: bit_seq = %s\n",
+              g_lib_name, pat);
+      }
+
+      // get pattern size
+      
+      if (base == 16){
+        //printf("***%s***\n", pat);
+        pat = &pat[2]; //remove 0x/0X
+        //printf("***%s***\n", pat);
+        pat_size = ceil(strlen(pat)/2.0);
+      } else if (base == 2){
+        pat_size = ceil(strlen(pat)/8.0);
+      } else {
+        sprintf(pat, "%llx", pattern);
+        pat_size = ceil(strlen(pat)/2.0);
+        sprintf(pat, "%lld", pattern);
+        //printf ("pattern after processing %s\n", pat);
+      }
+      
+      //printf("pattern size %ld \n", pat_size);
     }
     
     if (!got_bit_seq) {
@@ -180,7 +175,8 @@ int plugin_process_file(const char *fname,  // tên file truyền vào
       fprintf(stdout, "Not found\n");
       ret = 1;
     } 
-
+    
+    printf ("pattern in the end of function %s\n", pat);
     errno = saved_errno;
     return ret;
 }  
@@ -191,7 +187,7 @@ int bit_seq_match(FILE *pFile, long long pattern, size_t pSize){
   size_t result;
 
   
-  if (pFile==NULL) {
+  if (pFile == NULL) {
     fputs ("File error",stderr); 
     exit (1);
     }
