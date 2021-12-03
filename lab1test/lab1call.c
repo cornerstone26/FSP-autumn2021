@@ -123,14 +123,15 @@ int main(int argc, char *argv[]) {
     // Now process options for the lib
     while (1) {
         int opt_ind = 0;
-        ret = getopt_long(argc, argv, "", longopts, &opt_ind);
+        ret = getopt_long_only(argc, argv, "", longopts, &opt_ind);
         if (ret == -1) break;
         
         if (ret != 0) {
             fprintf(stderr, "ERROR: failed to parse options\n");
             goto END;
         }
-//kiểm tra lỗi chính tả
+
+/*
 #ifndef ALLOW_OPT_ABBREV
         // glibc quirk: no proper way to disable option abbreviations
         // https://stackoverflow.com/questions/5182041/turn-off-abbreviation-in-getopt-long-optarg-h
@@ -143,6 +144,7 @@ int main(int argc, char *argv[]) {
             goto END;
         }
 #endif
+*/
         
         // Check how many options we got up to this moment
         if ((size_t)opts_to_pass_len == pi.sup_opts_len) {

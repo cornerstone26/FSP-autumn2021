@@ -47,20 +47,11 @@ static struct plugin_option g_po_arr[] = {
         "A sequence of bits, you want to search for"
     },    
     
-    { 
-        {
-          OPT_TXT,
-          no_argument,
-          0, 0,
-        },
-
-        "Search for text files"
-    },  
 };
 
 static int g_po_arr_len = sizeof(g_po_arr)/sizeof(g_po_arr[0]); // lấy kích thước của mảng g_po_arr
 
-int plugin_get_info(struct plugin_info* ppi) {  // in thông tin -v
+int plugin_get_info(struct plugin_info* ppi) {  
     if (!ppi) {
         fprintf(stderr, "ERROR: invalid argument\n");
         return -1;
@@ -74,17 +65,18 @@ int plugin_get_info(struct plugin_info* ppi) {  // in thông tin -v
     return 0;
 }
 
-int plugin_process_file(const char *fname,  // tên file truyền vào
-        struct option in_opts[],            // option
-        size_t in_opts_len) {               // kích thước của option
+int plugin_process_file(const char *fname, 
+        struct option in_opts[],            
+        size_t in_opts_len) {               
 
     // Return error by default
-    int ret = -1;                           // mặc định là nếu lỗi thì trả về -1      
+    int ret = -1;                           
     
-    char *DEBUG = getenv("LAB1DEBUG");      // biến môi trường
+    char *DEBUG = getenv("LAB1DEBUG");     
     
+    printf("\nargument parsed to plugin_process_file fname %s, in_opts %s, in_opts_len %ld\n\n", fname, in_opts[0].name , in_opts_len);
     if (!fname || !in_opts || !in_opts_len) {   // thiếu tham số truyền vào
-        errno = EINVAL;                         //
+        errno = EINVAL;                         
         return -1;
     }
     
@@ -170,10 +162,10 @@ int plugin_process_file(const char *fname,  // tên file truyền vào
     int res = bit_seq_match(pFile, pattern, pat_size);
     if (res == 0){
         ret = 1;
-        fprintf(stdout, "%s\n", realpath(fname, NULL));
+        //fprintf(stdout, "%s\n",fname);
     } else if (res == 1){
       fprintf(stdout, "Not found\n");
-      ret = 1;
+      ret = 0;
     } 
     
     printf ("pattern in the end of function %s\n", pat);

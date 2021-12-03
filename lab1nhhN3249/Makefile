@@ -1,5 +1,5 @@
 CFLAGS=-Wall -Wextra -Werror -O2
-TARGETS=lab1test lab1nhhN3249 libnhhN3249.so
+TARGETS=lab1test lab1nhhN3249 libnhhN3249.so lib_typefile.so
 
 .PHONY: all clean
 
@@ -17,4 +17,5 @@ lab1nhhN3249: lab1nhhN3249.c plugin_api.h
 libnhhN3249.so: libnhhN3249.c plugin_api.h
 	gcc $(CFLAGS) -shared -fPIC -o libnhhN3249.so libnhhN3249.c -ldl -lm
 
-
+lib_typefile.so: lib_typefile.c plugin_api.h
+	gcc $(CFLAGS) -shared -fPIC -o lib_typefile.so lib_typefile.c -ldl -lm
