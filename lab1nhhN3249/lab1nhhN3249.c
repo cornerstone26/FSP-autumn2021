@@ -42,46 +42,54 @@ int main(int argc, char *argv[]) {
     
     int need_lib2 = 0;
     opterr = 0;
+    optind = 1;
+    for (int i = 0; i < argc; i++){
+        printf("%s ", argv[i]);
+    }
+    printf("\n");
 
-    while ((short_opt = getopt (argc, argv, "-AONvhP:")) != -1){
-        //printf("short_opt = %c\n", (char) short_opt);
-    
-        switch (short_opt)
-        {
-        case 'A':
-            aflag = 1;
-            need_lib2 = 1;
-            break;
-        case 'O':
-            oflag = 1;
-            need_lib2 = 1;
-            break;
-        case 'N':
-            nflag = 1;
-            need_lib2 = 1;
-            break;
-        case 'v':
-            vflag = 1;
-            break;
-        case 'h':
-            hflag = 1;
-            break;    
-        case 'P':
-            pvalue = optarg;
-            break;
-        case '?':
-            if (optopt == 'P'){
-                fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-                return -1;
-            } else {
+    while ((short_opt = getopt(argc, argv, "-AONvhP:")) != -1){
+        fprintf(stdout,"short_opt = %c\t optind = %d\n", (char) short_opt, optind);
+
+        switch (short_opt){
+            case 'A':
+                aflag = 1;
+                need_lib2 = 1;
                 break;
-            }              
+            case 'O':
+                oflag = 1;
+                need_lib2 = 1;
+                break;
+            case 'N':
+                nflag = 1;
+                need_lib2 = 1;
+                break;
+            case 'v':
+                vflag = 1;
+                break;
+            case 'h':
+                hflag = 1;
+                break;    
+            case 'P':
+                pvalue = optarg;
+                break;
+            case '?':
+                if (optopt == 'P'){
+                    fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+                    return -1;
+                } else {
+                    break;
+                }              
+        }
+
+        if (argv[optind][1] == '-'){    // long option is detected
+            goto START;
         }
     }
 
     printf ("aflag = %d, oflag = %d, nflag = %d, vflag = %d, hflag = %d, pvalue = %s\n",
             aflag, oflag, nflag, vflag, hflag, pvalue);
-
+    START: ;
     // debug
     for (int i = 0; i < argc; i++){
         printf("%s ", argv[i]);
@@ -271,22 +279,13 @@ int main(int argc, char *argv[]) {
     if (pvalue != NULL){
         folder = pvalue;
     } else {
-        if (getcwd(folder, PATH_MAX) != NULL) {
-            printf("Current working dir: %s\n", folder);
-        } else {
-            perror("getcwd() error");
-            goto END;
-        }
+        folder = ".";
     }
 
     printf("Here\n");
     // Now process options for the lib
     opterr = 1;
-
-    if (need_lib2 == 0)
-    {
-        optind = 0;
-    }
+ 
     int ret2 = -1;
     int lib_number = -1;
     int opt_count = 0, opt_count2 = 0;
@@ -295,10 +294,13 @@ int main(int argc, char *argv[]) {
     if (need_lib2 == 1){
         val_len_opts2 = pi[1].sup_opts_len;
     }
+    printf("\noptind after getopt() calling %d\n", optind);
+    //optind = 1;
     while (1) {
         int opt_ind = 0;
-        ret = getopt_long_only(argc, argv, "", longopts, &opt_ind);
-        printf("ret = %d\n", ret);
+        ret = getopt_long(argc, argv, "", longopts, &opt_ind);
+        printf("argv[%d] = %s\n", optind, argv[optind]);
+        printf("ret = %d ret2 = %d\n", ret, ret2);
         if (ret == 0){
             ret2 = 0;
             opt_arg1 = optarg;
@@ -309,9 +311,11 @@ int main(int argc, char *argv[]) {
         }
     
         if ((ret == '?') && (ret2 != -1)){
+            printf("ret = %d ret2 = %d\n", ret, ret2);
             memcpy(longopts + opt_ind, (int*)opt_arg1, sizeof(&opt_arg1));
             optind--;
-            ret2 = getopt_long_only(argc, argv, "", longopts2, &opt_ind);
+            
+            ret2 = getopt_long(argc, argv, "", longopts2, &opt_ind);
 
             if (ret2 == 0){
                 ret = 0;
@@ -323,6 +327,7 @@ int main(int argc, char *argv[]) {
         if (ret == -1) break;
             
         if (ret != 0) {
+            //continue;
             fprintf(stderr, "ERROR: failed to parse options\n");
             goto END;
         }
@@ -375,8 +380,6 @@ int main(int argc, char *argv[]) {
         }
     }
      
-    
-
     if (getenv("LAB1DEBUG")) {
         fprintf(stderr, "DEBUG: opts_to_pass_len = %d %d\n", opts_to_pass_len, opts_to_pass2_len);
         for (int i = 0; i < opts_to_pass_len; i++) {
@@ -455,7 +458,7 @@ int main(int argc, char *argv[]) {
                         fprintf(stdout, "%s\n",file_name);
                     }                
                 } else {
-                    perror("Error when get absolute path file: ");
+                    perror("Error when getting absolute path file: ");
                     goto END;
                 }
                 
@@ -476,7 +479,8 @@ int main(int argc, char *argv[]) {
     }
     if (longopts) free(longopts);
     if (lib_name) free(lib_name);
-    if (folder) free(folder);
+    //if (folder) free(folder);
     if (file_name) free(file_name);
     return 0;
 }
+

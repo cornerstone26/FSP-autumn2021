@@ -137,7 +137,8 @@ int plugin_process_file(const char *fname,
 }        
 
 int is_txt(const char *filename) { 
-    if (strcmp(get_filename_ext(filename),"txt")){
+    fprintf(stdout, "file name parsed to is_txt() %s\n", filename);
+    if (strcmp(get_filename_ext(filename),".txt") == 0){
         return 1;
     } else {
         return 0;
@@ -145,8 +146,10 @@ int is_txt(const char *filename) {
 }
 
 char *get_filename_ext(const char *filename) {
+    
     char *dot = strrchr(filename, '.');
+    fprintf(stdout, "dot %s\n", dot);
     if(!dot || dot == filename) 
         return "";
-    return dot + 1;
+    return dot;
 }

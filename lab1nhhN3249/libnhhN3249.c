@@ -144,7 +144,7 @@ int plugin_process_file(const char *fname,
         //printf ("pattern after processing %s\n", pat);
       }
       
-      //printf("pattern size %ld \n", pat_size);
+      printf("pattern size %ld \n", pat_size);
     }
     
     if (!got_bit_seq) {
@@ -206,14 +206,14 @@ int bit_seq_match(FILE *pFile, long long pattern, size_t pSize){
 
   // search for bit pattern in file
   
-  //fprintf(stdout, "%x\n", buffer);
+  //fprintf(stdout, "buffer %s\n", buffer);
   size_t pos = 0;
   while (fSize - pos >= pSize){
     if (memcmp(&buffer[pos], &pattern, pSize) == 0){
-      //fprintf(stdout, "matched in %ld %x\n", pos, buffer[pos]);
+      fprintf(stdout, "matched in %ld %x\n", pos, buffer[pos]);
       return 0;
     } else {
-      //fprintf(stdout, "not found in %ld %x \n", pos, buffer[pos]);
+      fprintf(stdout, "not found in %ld %x \n", pos, buffer[pos]);
       pos++;
     }
   }
