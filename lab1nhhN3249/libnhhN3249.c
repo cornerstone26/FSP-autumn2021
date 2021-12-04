@@ -210,10 +210,10 @@ int bit_seq_match(FILE *pFile, long long pattern, size_t pSize){
   size_t pos = 0;
   while (fSize - pos >= pSize){
     if (memcmp(&buffer[pos], &pattern, pSize) == 0){
-      fprintf(stdout, "matched in %ld %x\n", pos, buffer[pos]);
+      //fprintf(stdout, "matched in %ld %x\n", pos, buffer[pos]);
       return 0;
     } else {
-      fprintf(stdout, "not found in %ld %x \n", pos, buffer[pos]);
+      //fprintf(stdout, "not found in %ld %x \n", pos, buffer[pos]);
       pos++;
     }
   }
