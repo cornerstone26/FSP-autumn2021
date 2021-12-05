@@ -27,6 +27,7 @@ static int opts_to_pass2_len = 0;
 static struct option *opts_to_pass2 = NULL;
 static struct option *longopts2 = NULL;
 static char *folder;
+static char *folder_lib;
 static char *file_name;
 static int need_lib2;
 
@@ -37,6 +38,7 @@ static void *func = NULL;
 static void *func1 = NULL;
 
 static int search_dir(char *folder, int aflag, int oflag, int nflag);
+static char *get_abs_path(char *folder, char*file_name);
 
 int main(int argc, char *argv[]) {
  
@@ -133,8 +135,10 @@ int main(int argc, char *argv[]) {
         lib_name[i] = (char*)malloc(sizeof(argv[i + 1]));
     }
 
-    //char *folder = malloc(sizeof(char)*PATH_MAX);
-    //char *file_name = malloc(sizeof(char)*PATH_MAX);
+    folder = malloc(sizeof(char)*PATH_MAX);
+    folder_lib = malloc(sizeof(char)*PATH_MAX);
+    file_name = malloc(sizeof(char)*PATH_MAX);
+
     struct plugin_info pi[2];
     int ret;
     void *dl[2] = {NULL, NULL};
@@ -295,10 +299,17 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    if (getcwd(folder, PATH_MAX) != NULL) {
+            printf("Current working dir: %s\n", folder);
+        } else {
+            perror("getcwd() error");
+            goto END;
+    }
+
     if (pvalue != NULL){
         folder = pvalue;
     } else {
-        folder = ".";
+        folder_lib = folder;
     }
 
     printf("Here\n");
@@ -415,6 +426,7 @@ int main(int argc, char *argv[]) {
             }
         }
     }
+    
     ret = search_dir(folder, aflag, oflag, nflag);
     
     END:
@@ -432,6 +444,9 @@ int main(int argc, char *argv[]) {
 
 int search_dir(char *folder, int aflag, int oflag, int nflag){
     fprintf(stdout, "\n\nFOLDER %s\n", folder);
+    if (folder == NULL){
+        return 1;
+    }
     int ret = 0, ret2 = 0;
     DIR *dir;
     struct dirent *ent;
@@ -440,8 +455,8 @@ int search_dir(char *folder, int aflag, int oflag, int nflag){
         /* Parse all the files within directory */
         while ((ent = readdir (dir)) != NULL) {
             if (ent->d_type == DT_REG){
-                 printf ("\n**************%s\n", realpath(ent->d_name, NULL));
-                if ((file_name = realpath(ent->d_name, NULL)) != NULL){
+                printf ("\n\n FILE: %s\n", get_abs_path(folder, ent->d_name));
+                if ((file_name = get_abs_path(folder, ent->d_name)) != NULL){
                     // Call plugin_process_file()
                     errno = 0;
                     ppf_func_t ppf_func = (ppf_func_t)func;
@@ -495,12 +510,11 @@ int search_dir(char *folder, int aflag, int oflag, int nflag){
                 
             } else if (ent->d_type == DT_DIR){
                 fprintf(stdout, "\n\nSUBFOLDER %s\n", folder);
-
                 if ((strcmp(ent->d_name, ".") != 0) && (strcmp(ent->d_name, "..") != 0)){
-                    folder = realpath(ent->d_name, NULL);
-                    search_dir(folder, aflag, oflag, nflag);
+                    search_dir(get_abs_path(folder, ent->d_name), aflag, oflag, nflag);
                 } else {
-                     fprintf(stdout, "\n\nCHECKED\n");
+                    fprintf(stdout, "\n\nCHECKED\n");
+                    
                 }
             }
         }
@@ -512,4 +526,17 @@ int search_dir(char *folder, int aflag, int oflag, int nflag){
         return EXIT_FAILURE;
     }
     return 1;
+}
+
+char *get_abs_path (char *dir, char *fname){
+    char *path = malloc(sizeof(char)*PATH_MAX*2);
+    strcpy(path, dir);
+    strcat(path, "/");
+    strcat(path, fname);
+    printf("\n\nDEBUG get_abs_path dir %s, fname %s\n\n", dir, fname);
+    return path;
+}
+
+char *get_lib(char* dir, char *libname){
+    
 }
