@@ -40,6 +40,10 @@ static void *func1 = NULL;
 static int search_dir(char *folder, int aflag, int oflag, int nflag);
 static char *get_abs_path(char *folder, char*file_name);
 
+static char *get_lib(char* folder, char *libname);
+static int is_lib(const char *filename);
+static char *get_filename_ext(const char *filename);
+
 int main(int argc, char *argv[]) {
  
     // Minimum number of arguments is 4: 
@@ -115,49 +119,55 @@ int main(int argc, char *argv[]) {
         printf("%s ", argv[i]);
     }
     printf("\n");
+    
+    folder = malloc(sizeof(char)*PATH_MAX);
+    folder_lib = malloc(sizeof(char)*PATH_MAX);
+    file_name = malloc(sizeof(char)*PATH_MAX);
+
+    if (getcwd(folder, PATH_MAX) != NULL) {
+            printf("Current working dir: %s\n", folder);
+        } else {
+            perror("getcwd() error");
+            goto END;
+    }
+
+    if (pvalue != NULL){
+        folder_lib = pvalue;
+    } else {
+        folder_lib = folder;
+    }
 
     int num_iter = need_lib2 + 1;
-
-/*
-    //first lib
-    int opts_to_pass_len = 0;
-    struct option *opts_to_pass = NULL;
-    struct option *longopts = NULL;
-    
-    //second lib
-
-    int opts_to_pass2_len = 0;
-    struct option *opts_to_pass2 = NULL;
-    struct option *longopts2 = NULL; */
-    
+  
     char **lib_name = (char**)malloc(num_iter * sizeof(char*)); //NULL;
     for (int i = 0; i < num_iter; ++i){
         lib_name[i] = (char*)malloc(sizeof(argv[i + 1]));
     }
 
-    folder = malloc(sizeof(char)*PATH_MAX);
-    folder_lib = malloc(sizeof(char)*PATH_MAX);
-    file_name = malloc(sizeof(char)*PATH_MAX);
+    
 
     struct plugin_info pi[2];
     int ret;
     void *dl[2] = {NULL, NULL};
 
-    // void *func = NULL;
-    // void *func1 = NULL;
 
-    // typedef int (*pgi_func_t)(struct plugin_info*);
-    // pgi_func_t pgi_func = NULL;
-    // typedef int (*ppf_func_t)(const char*, struct option*, size_t);
+    // if ((((argv[1][0] != '.') && (argv[1][1] != '/')) || ((argv[2][0] == '-'))) && (need_lib2 == 1)){
+    //     fprintf(stderr, "ERROR: Short option is entered, but only one dynamic library (*.so) exists:\n");
+    //     goto END;
+    // }
 
-    if ((((argv[1][0] != '.') && (argv[1][1] != '/')) || ((argv[2][0] != '.') && (argv[2][1] != '/'))) && (need_lib2 == 1)){
-        fprintf(stderr, "ERROR: Short option is entered, but only one dynamic library (*.so) exists:\n");
-        goto END;
+    // Name of the main lib. Should be passed as the first argument.
+    for (int i = 0; i < num_iter; ++i){
+        lib_name[i] = strdup(argv[i+1]);
     }
 
+    if (need_lib2){
+        lib_name[1] = get_lib(folder_lib, lib_name[1]);
+    }
+    
+    printf("\n\n%s, %s\n\n", lib_name[0], lib_name[1]);
+
     for (int i = 0; i < num_iter; ++i){
-        // Name of the lib. Should be passed as the first argument.
-        lib_name[i] = strdup(argv[i + 1]);
 
         if (!dlopen(lib_name[i], RTLD_LAZY)){
             fprintf(stderr, "ERROR: dlopen() failed: %s\n", dlerror());
@@ -299,18 +309,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    if (getcwd(folder, PATH_MAX) != NULL) {
-            printf("Current working dir: %s\n", folder);
-        } else {
-            perror("getcwd() error");
-            goto END;
-    }
-
-    if (pvalue != NULL){
-        folder = pvalue;
-    } else {
-        folder_lib = folder;
-    }
 
     printf("Here\n");
     // Now process options for the lib
@@ -426,7 +424,7 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-    
+    //printf("\n\nLIBRARY FOUND %s\n", get_lib(folder_lib, lib_name[1]));
     ret = search_dir(folder, aflag, oflag, nflag);
     
     END:
@@ -436,7 +434,7 @@ int main(int argc, char *argv[]) {
         free(opts_to_pass);
     }
     if (longopts) free(longopts);
-    if (lib_name) free(lib_name);
+    //if (lib_name) free(lib_name);
     //if (folder) free(folder);
     if (file_name) free(file_name);
     return 0;
@@ -528,6 +526,7 @@ int search_dir(char *folder, int aflag, int oflag, int nflag){
     return 1;
 }
 
+
 char *get_abs_path (char *dir, char *fname){
     char *path = malloc(sizeof(char)*PATH_MAX*2);
     strcpy(path, dir);
@@ -537,6 +536,62 @@ char *get_abs_path (char *dir, char *fname){
     return path;
 }
 
-char *get_lib(char* dir, char *libname){
-    
+
+char *get_lib(char* folder, char *libname){
+    DIR *dir;
+    struct dirent *ent;
+    if ((dir = opendir (folder)) != NULL) {
+        printf ("\nFolder lib opened\n");
+        /* Parse all the files within directory */
+        while ((ent = readdir (dir)) != NULL) {
+            if (ent->d_type == DT_REG){
+                printf ("\n\n FILE LIB: %s\n", get_abs_path(folder, ent->d_name));
+                if ((file_name = get_abs_path(folder, ent->d_name)) != NULL){
+                    if (is_lib(file_name)){
+                        printf ("\n\n %s %s\n", ent->d_name, libname);
+                        if (strcmp(ent->d_name, libname) == 0){
+                            return file_name;
+                        }
+                    }
+                } else {
+                    perror("Error when getting absolute path file: ");
+                    return NULL;
+                }
+                
+            } else if (ent->d_type == DT_DIR){
+                fprintf(stdout, "\n\nSUBFOLDER LIB %s\n", folder);
+                if ((strcmp(ent->d_name, ".") != 0) && (strcmp(ent->d_name, "..") != 0)){
+                    if (get_lib(get_abs_path(folder, ent->d_name), libname) != NULL){
+                        return get_lib(get_abs_path(folder, ent->d_name), libname);
+                    }
+                } else {
+                    fprintf(stdout, "\n\nCHECKED\n");
+                }
+            }
+        }
+        closedir (dir);
+        return NULL;
+    } else {
+        // could not open directory
+        perror ("Error when open directory: ");
+        return NULL;
+    }
+    return NULL;
+}
+
+int is_lib(const char *filename) { 
+    fprintf(stdout, "file name parsed to is_txt() %s\n", filename);
+    if (strcmp(get_filename_ext(filename),".so") == 0){
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+char *get_filename_ext(const char *filename) {
+    char *dot = strrchr(filename, '.');
+    fprintf(stdout, "dot %s\n", dot);
+    if(!dot || dot == filename) 
+        return "";
+    return dot;
 }
