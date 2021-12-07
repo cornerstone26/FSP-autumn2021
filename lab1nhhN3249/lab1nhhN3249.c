@@ -29,7 +29,6 @@ static struct option *opts_to_pass2 = NULL;
 static struct option *longopts2 = NULL;
 static char *folder;
 static char *folder_lib;
-static char *file_name;
 static int need_lib2;
 
 typedef int (*pgi_func_t)(struct plugin_info*);
@@ -127,7 +126,6 @@ int main(int argc, char *argv[]) {
     
     folder = malloc(sizeof(char)*PATH_MAX);
     folder_lib = malloc(sizeof(char)*PATH_MAX);
-    file_name = malloc(sizeof(char)*PATH_MAX);
 
     if (getcwd(folder, PATH_MAX) != NULL) {
            if (DEBUG) fprintf(stdout, "Current working dir: %s\n", folder);
@@ -162,14 +160,11 @@ int main(int argc, char *argv[]) {
     if (DEBUG) fprintf(stdout, "\nUsing libraries:\n %s\n %s\n", lib_name[0], lib_name[1]);
 
     for (int i = 0; i < num_iter; ++i){
-
-        if (!dlopen(lib_name[i], RTLD_LAZY)){
+        dl[i] = dlopen(lib_name[i], RTLD_LAZY);
+        if (!dl[i]){
             fprintf(stderr, "ERROR: dlopen() failed: %s\n", dlerror());
             goto END;
-        } else {
-            dl[i] = dlopen(lib_name[i], RTLD_LAZY);
-            //fprintf(stdout, "%s\n", lib_name[i]);
-        }
+        } 
 
         // Check for plugin_get_info() func
         if (!dlsym(dl[i], "plugin_get_info")) {
@@ -423,20 +418,21 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < num_iter; i++){
         if (lib_name[i]) free(lib_name[i]);
-        
+        dlclose(dl[i]);
     }
     
     if (lib_name) free(lib_name);
     if (folder) free(folder);
-    if (file_name) free(file_name);
     //if (folder_lib) free (folder_lib);
-    dlclose(dl);
+    
     return 0;
 }
 
 int search_dir(char *folder, int aflag, int oflag, int nflag){
     if (getenv("LAB1DEBUG")) fprintf(stdout, "\n\nWORKING FOLDER %s\n", folder);
-    char *file_name0 = malloc(sizeof(char)*PATH_MAX*2);
+    char *file_name0 = NULL;
+
+    //char *file_name0 = malloc(sizeof(char)*PATH_MAX*2);
     if (folder == NULL){
         return 1;
     }
@@ -505,7 +501,7 @@ int search_dir(char *folder, int aflag, int oflag, int nflag){
                     }                
                 } else {
                     perror("Error when getting absolute path file: ");
-                    free(file_name0);
+                    if (file_name0) free(file_name0);
                     return -1;
                 }
                 
@@ -538,7 +534,9 @@ char *get_abs_path (char *dir, char *fname){
 }
 
 char *get_lib(char* folder, char *libname){
-    char *file_name0 = malloc(sizeof(char)*PATH_MAX*2);
+    
+    char *file_name0 = NULL;
+    //char *file_name0 = malloc(sizeof(char)*PATH_MAX*2);
     DIR *dir;
     struct dirent *ent;
     if ((dir = opendir (folder)) != NULL) {
@@ -552,6 +550,7 @@ char *get_lib(char* folder, char *libname){
                     if (is_lib(file_name0)){
                         //printf ("\n\n %s %s\n", ent->d_name, libname);
                         if (strcmp(ent->d_name, libname) == 0){
+                            closedir (dir);
                             return file_name0;
                         }
                     }
@@ -565,6 +564,7 @@ char *get_lib(char* folder, char *libname){
                 if ((strcmp(ent->d_name, ".") != 0) && (strcmp(ent->d_name, "..") != 0)){
                     file_name0 = get_abs_path(folder, ent->d_name);
                     if (get_lib(file_name0, libname) != NULL){
+                        closedir (dir);
                         return get_lib(file_name0, libname);
                     }
                 } else {

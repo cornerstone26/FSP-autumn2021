@@ -219,7 +219,7 @@ int bit_seq_match(FILE *pFile, long long pattern, size_t pSize){
   }
      
   //fclose (pFile);
-  free (buffer);
+  if (buffer) free (buffer);
   return 1;
   
 }
