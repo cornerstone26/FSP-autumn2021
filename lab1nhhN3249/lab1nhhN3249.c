@@ -19,6 +19,7 @@
 #include <ctype.h>
 #include "plugin_api.h"
 
+static int count = 0;
 static int opts_to_pass_len = 0;
 static struct option *opts_to_pass = NULL;
 static struct option *longopts = NULL;
@@ -39,22 +40,20 @@ static void *func1 = NULL;
 
 static int search_dir(char *folder, int aflag, int oflag, int nflag);
 static char *get_abs_path(char *folder, char*file_name);
-
 static char *get_lib(char* folder, char *libname);
 static int is_lib(const char *filename);
 static char *get_filename_ext(const char *filename);
 
 int main(int argc, char *argv[]) {
- 
-    // Minimum number of arguments is 4: 
-    // $ program_name lib_name --opt1 file_to_check
+    
+    char *DEBUG = getenv("LAB1DEBUG");
+    // Minimum number of arguments is 3: 
+    // $ program_name lib_name --opt1
     if (argc < 3) {        
-        fprintf(stdout, "Usage: lab1nhhN3249 /path/to/libnhhN3249.so --option [value] \n");
+        fprintf(stdout, "Usage: ./lab1nhhN3249 libnhhN3249.so --options [value] \n");
         return 0;
     }
-    // Name of the lib. Should be passed as the first argument.
-    //char *lib_name = strdup(argv[1]); 
-    
+
     // short option
     int aflag = 0;
     int oflag = 0;
@@ -66,15 +65,8 @@ int main(int argc, char *argv[]) {
     
     need_lib2 = 0;
     opterr = 0;
-    optind = 1;
-    for (int i = 0; i < argc; i++){
-        printf("%s ", argv[i]);
-    }
-    printf("\n");
-
     while ((short_opt = getopt(argc, argv, "-AONvhP:")) != -1){
-        fprintf(stdout,"short_opt = %c\t optind = %d\n", (char) short_opt, optind);
-
+        //fprintf(stdout, "short_opt = %c\t optind = %d\n", (char) short_opt, optind);
         switch (short_opt){
             case 'A':
                 aflag = 1;
@@ -90,9 +82,11 @@ int main(int argc, char *argv[]) {
                 break;
             case 'v':
                 vflag = 1;
+                need_lib2 = 1;
                 break;
             case 'h':
                 hflag = 1;
+                need_lib2 = 1;
                 break;    
             case 'P':
                 pvalue = optarg;
@@ -106,28 +100,39 @@ int main(int argc, char *argv[]) {
                 }              
         }
 
-        if (argv[optind][1] == '-'){    // long option is detected
-            goto START;
+        if (optind < argc){
+             if (argv[optind][1] == '-'){    // long option is detected 
+                goto START;
+            }
         }
     }
 
-    printf ("aflag = %d, oflag = %d, nflag = %d, vflag = %d, hflag = %d, pvalue = %s\n",
-            aflag, oflag, nflag, vflag, hflag, pvalue);
     START: ;
-    // debug
-    for (int i = 0; i < argc; i++){
-        printf("%s ", argv[i]);
+    if (DEBUG){
+        fprintf(stdout, "\nDEBUG: Short options: aflag = %d, oflag = %d, nflag = %d, vflag = %d, hflag = %d, pvalue = %s\n", aflag, oflag, nflag, vflag, hflag, pvalue);
     }
-    printf("\n");
+
+    if (DEBUG){
+        fprintf(stdout,"\nargv[]: ");
+        for (int i = 0; i < argc; i++){
+            fprintf(stdout, "%s ", argv[i]);
+        }
+        fprintf(stdout,"\n");
+    }
+    int num_iter = need_lib2 + 1;
+    char **lib_name = (char**)malloc(num_iter * sizeof(char*)); //NULL;
+    for (int i = 0; i < num_iter; ++i){
+        lib_name[i] = (char*)malloc(sizeof(argv[i + 1]));
+    }
     
     folder = malloc(sizeof(char)*PATH_MAX);
     folder_lib = malloc(sizeof(char)*PATH_MAX);
     file_name = malloc(sizeof(char)*PATH_MAX);
 
     if (getcwd(folder, PATH_MAX) != NULL) {
-            printf("Current working dir: %s\n", folder);
+           if (DEBUG) fprintf(stdout, "Current working dir: %s\n", folder);
         } else {
-            perror("getcwd() error");
+            if (DEBUG) perror("getcwd() error: ");
             goto END;
     }
 
@@ -137,35 +142,24 @@ int main(int argc, char *argv[]) {
         folder_lib = folder;
     }
 
-    int num_iter = need_lib2 + 1;
-  
-    char **lib_name = (char**)malloc(num_iter * sizeof(char*)); //NULL;
-    for (int i = 0; i < num_iter; ++i){
-        lib_name[i] = (char*)malloc(sizeof(argv[i + 1]));
-    }
-
-    
 
     struct plugin_info pi[2];
     int ret;
     void *dl[2] = {NULL, NULL};
 
 
-    // if ((((argv[1][0] != '.') && (argv[1][1] != '/')) || ((argv[2][0] == '-'))) && (need_lib2 == 1)){
-    //     fprintf(stderr, "ERROR: Short option is entered, but only one dynamic library (*.so) exists:\n");
-    //     goto END;
-    // }
+    if (((argv[1][0] == '-') || ((argv[2][0] == '-'))) && (need_lib2 == 1)){
+        fprintf(stderr, "ERROR: The program need two dynamic libraries (*.so)\n");
+        goto END;
+    }
 
     // Name of the main lib. Should be passed as the first argument.
-    for (int i = 0; i < num_iter; ++i){
-        lib_name[i] = strdup(argv[i+1]);
-    }
 
-    if (need_lib2){
-        lib_name[1] = get_lib(folder_lib, lib_name[1]);
+    for (int i = 0; i < num_iter; ++i){
+        lib_name[i] = get_lib(folder_lib, argv[i+1]);
     }
-    
-    printf("\n\n%s, %s\n\n", lib_name[0], lib_name[1]);
+            
+    if (DEBUG) fprintf(stdout, "\nUsing libraries:\n %s\n %s\n", lib_name[0], lib_name[1]);
 
     for (int i = 0; i < num_iter; ++i){
 
@@ -174,7 +168,7 @@ int main(int argc, char *argv[]) {
             goto END;
         } else {
             dl[i] = dlopen(lib_name[i], RTLD_LAZY);
-            fprintf(stdout, " %s\n", lib_name[i]);
+            //fprintf(stdout, "%s\n", lib_name[i]);
         }
 
         // Check for plugin_get_info() func
@@ -248,23 +242,20 @@ int main(int argc, char *argv[]) {
         }
         // Prepare array of actually used options that will be passed to 
         // plugin_process_file() (Maximum pi.sup_opts_len options)
-        if (i == 0)
-        {
+        if (i == 0){
             opts_to_pass = calloc(pi[i].sup_opts_len, sizeof(struct option));
             if (!opts_to_pass) {
                 fprintf(stderr, "ERROR: calloc() failed: %s\n", strerror(errno));
                 goto END;
             }
-        }
-        else if (i == 1)
-        {
+        }else if (i == 1){
             opts_to_pass2 = calloc(pi[i].sup_opts_len, sizeof(struct option));
             if (!opts_to_pass2) {
                 fprintf(stderr, "ERROR: calloc() failed: %s\n", strerror(errno));
                 goto END;
             }
         }
-        fprintf(stdout, "\n");
+        
     }
 
     if (vflag){   
@@ -281,8 +272,7 @@ int main(int argc, char *argv[]) {
             for (size_t i = 0; i < pi[0].sup_opts_len; i++) {
                 fprintf(stdout, "\t--%s\t\t%s\n", pi[0].sup_opts[i].opt.name, pi[0].sup_opts[i].opt_descr);
             }
-        }
-        else {
+        } else {
             fprintf(stdout, "none (!?)\n");
         }
         fprintf(stdout, "\n");
@@ -296,24 +286,23 @@ int main(int argc, char *argv[]) {
                     \n\t-N\t\t Inverting the search condition (after combining options plugins with -A or -O).\
                     \n\t-v\t\t Display the version of the program and information about the program (full name performer, group number, laboratory version number).\
                     \n\t-h\t\t Display help for options.\n");
-        if (pi[0].sup_opts_len > 0) {
-            fprintf(stdout, "\n");
-            for (size_t i = 0; i < pi[0].sup_opts_len; i++) {
-                fprintf(stdout, "\t--%s\t\t%s\n", pi[0].sup_opts[i].opt.name, pi[0].sup_opts[i].opt_descr);
+        for (int j = 0; j < 2; j++) {
+            if (pi[j].sup_opts_len > 0) {
+                fprintf(stdout, "\n");
+                for (size_t i = 0; i < pi[j].sup_opts_len; i++) {
+                    fprintf(stdout, "\t--%s\t\t%s\n", pi[j].sup_opts[i].opt.name, pi[j].sup_opts[i].opt_descr);
+                }
+            } else {
+                fprintf(stdout, "none (!?)\n");
+                return -1;
             }
-        }
-        else {
-            fprintf(stdout, "none (!?)\n");
-            return -1;
         }
         return 1;
     }
 
-
-    printf("Here\n");
+    //printf("Here\n");
     // Now process options for the lib
-    opterr = 1;
- 
+    opterr = 0;
     int ret2 = -1;
     int lib_number = -1;
     int opt_count = 0, opt_count2 = 0;
@@ -322,29 +311,30 @@ int main(int argc, char *argv[]) {
     if (need_lib2 == 1){
         val_len_opts2 = pi[1].sup_opts_len;
     }
-    printf("\noptind after getopt() calling %d\n", optind);
-    //optind = 1;
+    //printf("\noptind after getopt() calling %d\n", optind);
+    
     while (1) {
         int opt_ind = 0;
+        //printf("argv[%d] = %s\n", optind, argv[optind]);
         ret = getopt_long(argc, argv, "", longopts, &opt_ind);
-        printf("argv[%d] = %s\n", optind, argv[optind]);
-        printf("ret = %d ret2 = %d\n", ret, ret2);
+        //printf("argv[%d] = %s\n", optind, argv[optind]);
+
         if (ret == 0){
             ret2 = 0;
             opt_arg1 = optarg;
             opt_count++;
             lib_number = 1;
 
-            printf("opt_arg1: %s\t opt_count: %d\t lib_num: %d\n", opt_arg1, opt_count, lib_number);
         }
     
         if ((ret == '?') && (ret2 != -1)){
-            printf("ret = %d ret2 = %d\n", ret, ret2);
+            //printf("ret = %d ret2 = %d\n", ret, ret2);
             memcpy(longopts + opt_ind, (int*)opt_arg1, sizeof(&opt_arg1));
             optind--;
             
             ret2 = getopt_long(argc, argv, "", longopts2, &opt_ind);
-            printf("argv[%d] = %s\n", optind, argv[optind]); 
+            //printf("argv[%d] = %s\n", optind, argv[optind]); 
+            //printf("longopts2 %s\n",longopts2[1]->name);
             if (ret2 == 0){
                 ret = 0;
                 opt_count2++;
@@ -359,43 +349,30 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "ERROR: failed to parse options\n");
             goto END;
         }
-
-/*
-#ifndef ALLOW_OPT_ABBREV
-        // glibc quirk: no proper way to disable option abbreviations
-        // https://stackoverflow.com/questions/5182041/turn-off-abbreviation-in-getopt-long-optarg-h
-        int idx = (longopts + opt_ind)->has_arg ? 2 : 1;
-        const char *actual_opt_name = argv[optind - idx] + 2; // +2 for -- before option
-        const char *found_opt_name = (longopts + opt_ind)->name;
-        if (strcmp(actual_opt_name, found_opt_name)) {
-            // It's probably abbreviated name, which we do not allow
-            fprintf(stderr, "ERROR: unknown option: %s\n", argv[optind - idx]);
-            goto END;
-        }
-#endif
-*/
-        
+   
         // Check how many options we got up to this moment
         if ((size_t)opts_to_pass_len == pi[0].sup_opts_len + val_len_opts2) {
             fprintf(stderr, "ERROR: too many options!\n");
             goto END;
         }
-
+        
         if (lib_number == 1){
             // Add this option to array of options actually passed to plugin_process_file()
             memcpy(opts_to_pass + opts_to_pass_len, longopts + opt_ind, sizeof(struct option));
+       
             // Argument (if any) is passed in flag
             if ((longopts + opt_ind)->has_arg) {
             // Mind this!
             // flag is of type int*, but we are passing char* here (it's ok to do so).
-            (opts_to_pass + opts_to_pass_len)->flag = (int*)strdup(optarg);
+                (opts_to_pass + opts_to_pass_len)->flag = (int*)strdup(optarg);
+                
             }
-
-            opts_to_pass_len++;     
-
+            
+            opts_to_pass_len++;  
+              
         } else if (need_lib2 == 1) {
-            memcpy(opts_to_pass2 + opts_to_pass2_len, longopts2 + (opt_count2 - 1), sizeof(struct option));
-
+            memcpy(opts_to_pass2 + opts_to_pass2_len, longopts2 + opt_count2 - 1, sizeof(struct option));
+            
             // Argument (if any) is passed in flag
             if ((longopts2 + (opt_count2 - 1))->has_arg) {
                 // Mind this!
@@ -404,7 +381,7 @@ int main(int argc, char *argv[]) {
             }
 
             opts_to_pass2_len++;
-
+            
         }
     }
      
@@ -424,8 +401,9 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-    //printf("\n\nLIBRARY FOUND %s\n", get_lib(folder_lib, lib_name[1]));
+
     ret = search_dir(folder, aflag, oflag, nflag);
+    fprintf(stdout, "\n%d file(s) have been found\n", count);
     
     END:
     if (opts_to_pass) {
@@ -433,42 +411,61 @@ int main(int argc, char *argv[]) {
             free( (opts_to_pass + i)->flag );
         free(opts_to_pass);
     }
+    if (opts_to_pass2) {
+        for (int i = 0; i < opts_to_pass2_len; i++)
+            free( (opts_to_pass2 + i)->flag );
+        free(opts_to_pass2);
+    }
+   
     if (longopts) free(longopts);
-    //if (lib_name) free(lib_name);
-    //if (folder) free(folder);
+
+    if (longopts2) free(longopts2);
+
+    for (int i = 0; i < num_iter; i++){
+        if (lib_name[i]) free(lib_name[i]);
+        
+    }
+    
+    if (lib_name) free(lib_name);
+    if (folder) free(folder);
     if (file_name) free(file_name);
+    //if (folder_lib) free (folder_lib);
+    dlclose(dl);
     return 0;
 }
 
 int search_dir(char *folder, int aflag, int oflag, int nflag){
-    fprintf(stdout, "\n\nFOLDER %s\n", folder);
+    if (getenv("LAB1DEBUG")) fprintf(stdout, "\n\nWORKING FOLDER %s\n", folder);
+    char *file_name0 = malloc(sizeof(char)*PATH_MAX*2);
     if (folder == NULL){
         return 1;
     }
+    
     int ret = 0, ret2 = 0;
     DIR *dir;
     struct dirent *ent;
     if ((dir = opendir (folder)) != NULL) {
-        printf ("\nFolder opened\n");
+        //printf ("\nFolder opened\n");
         /* Parse all the files within directory */
         while ((ent = readdir (dir)) != NULL) {
             if (ent->d_type == DT_REG){
-                printf ("\n\n FILE: %s\n", get_abs_path(folder, ent->d_name));
-                if ((file_name = get_abs_path(folder, ent->d_name)) != NULL){
+                file_name0 = get_abs_path(folder, ent->d_name);
+                if (getenv("LAB1DEBUG")) printf ("\nCHECKING FILE: %s\n", file_name0);
+                if (file_name0 != NULL){
                     // Call plugin_process_file()
                     errno = 0;
                     ppf_func_t ppf_func = (ppf_func_t)func;
-                    ret = ppf_func(file_name, opts_to_pass, opts_to_pass_len);
+                    ret = ppf_func(file_name0, opts_to_pass, opts_to_pass_len);
                     //fprintf(stdout, "%ls\n",opts_to_pass->flag);
-                    fprintf(stdout, "plugin_process_file() returned %d\n", ret);
+                    if (getenv("LAB1DEBUG")) fprintf(stdout, "plugin_process_file() returned %d\n", ret);
                     if (ret < 0) {
-                        fprintf(stdout, "Error information: %s\n", strerror(errno));
+                        if (getenv("LAB1DEBUG")) fprintf(stdout, "Error information: %s\n", strerror(errno));
                     } 
                     
                     if (need_lib2 == 1){
                         ppf_func_t ppf_func1 = (ppf_func_t)func1;
-                        ret2 = ppf_func1(file_name, opts_to_pass2, opts_to_pass2_len);
-                        fprintf(stdout, "plugin_process_file() (lib2) returned %d\n", ret2);
+                        ret2 = ppf_func1(file_name0, opts_to_pass2, opts_to_pass2_len);
+                        if (getenv("LAB1DEBUG")) fprintf(stdout, "plugin_process_file() returned %d\n", ret2);
                         if (ret2 < 0) {
                             fprintf(stdout, "Error information: %s\n", strerror(errno));
                         }
@@ -477,45 +474,50 @@ int search_dir(char *folder, int aflag, int oflag, int nflag){
                     if (aflag){
                         if (nflag){
                             if (!(ret == 1 && ret2 == 1)){
-                                fprintf(stdout, "%s\n",file_name);
+                                ++count;
+                                fprintf(stdout, "%s\n",file_name0);
                             }
                             continue;
                         } else {
                             if (ret == 1 && ret2 == 1){
-                                fprintf(stdout, "%s\n",file_name);
+                                ++count;
+                                fprintf(stdout, "%s\n",file_name0);
                             }
                             continue;
                         }
                     } else if (oflag){
                         if (nflag){
                             if (!(ret == 1 || ret2 == 1)){
-                                fprintf(stdout, "%s\n",file_name);
+                                ++count;
+                                fprintf(stdout, "%s\n",file_name0);
                             }
                             continue;
                         } else {
                             if (ret == 1 || ret2 == 1){
-                                fprintf(stdout, "%s\n",file_name);
+                                ++count;
+                                fprintf(stdout, "%s\n",file_name0);
                             }
                             continue;
                         }
                     } else if (ret == 1){
-                        fprintf(stdout, "%s\n",file_name);
+                        ++count;
+                        fprintf(stdout, "%s\n",file_name0);
                     }                
                 } else {
                     perror("Error when getting absolute path file: ");
+                    free(file_name0);
                     return -1;
                 }
                 
             } else if (ent->d_type == DT_DIR){
-                fprintf(stdout, "\n\nSUBFOLDER %s\n", folder);
+               
                 if ((strcmp(ent->d_name, ".") != 0) && (strcmp(ent->d_name, "..") != 0)){
-                    search_dir(get_abs_path(folder, ent->d_name), aflag, oflag, nflag);
-                } else {
-                    fprintf(stdout, "\n\nCHECKED\n");
-                    
-                }
+                    file_name0 = get_abs_path(folder, ent->d_name);
+                    search_dir(file_name0, aflag, oflag, nflag);
+                } 
             }
         }
+        free(file_name0);
         closedir (dir);
         return 1;
     } else {
@@ -523,7 +525,7 @@ int search_dir(char *folder, int aflag, int oflag, int nflag){
         perror ("Error when open directory: ");
         return EXIT_FAILURE;
     }
-    return 1;
+       
 }
 
 
@@ -532,25 +534,25 @@ char *get_abs_path (char *dir, char *fname){
     strcpy(path, dir);
     strcat(path, "/");
     strcat(path, fname);
-    printf("\n\nDEBUG get_abs_path dir %s, fname %s\n\n", dir, fname);
     return path;
 }
 
-
 char *get_lib(char* folder, char *libname){
+    char *file_name0 = malloc(sizeof(char)*PATH_MAX*2);
     DIR *dir;
     struct dirent *ent;
     if ((dir = opendir (folder)) != NULL) {
-        printf ("\nFolder lib opened\n");
+        //printf ("\nFolder lib opened\n");
         /* Parse all the files within directory */
         while ((ent = readdir (dir)) != NULL) {
             if (ent->d_type == DT_REG){
-                printf ("\n\n FILE LIB: %s\n", get_abs_path(folder, ent->d_name));
-                if ((file_name = get_abs_path(folder, ent->d_name)) != NULL){
-                    if (is_lib(file_name)){
-                        printf ("\n\n %s %s\n", ent->d_name, libname);
+                file_name0 = get_abs_path(folder, ent->d_name);
+                //printf ("\n\n FILE LIB: %s\n", get_abs_path(folder, ent->d_name));
+                if (file_name0 != NULL){
+                    if (is_lib(file_name0)){
+                        //printf ("\n\n %s %s\n", ent->d_name, libname);
                         if (strcmp(ent->d_name, libname) == 0){
-                            return file_name;
+                            return file_name0;
                         }
                     }
                 } else {
@@ -559,29 +561,32 @@ char *get_lib(char* folder, char *libname){
                 }
                 
             } else if (ent->d_type == DT_DIR){
-                fprintf(stdout, "\n\nSUBFOLDER LIB %s\n", folder);
+                //fprintf(stdout, "\n\nSUBFOLDER LIB %s\n", folder);
                 if ((strcmp(ent->d_name, ".") != 0) && (strcmp(ent->d_name, "..") != 0)){
-                    if (get_lib(get_abs_path(folder, ent->d_name), libname) != NULL){
-                        return get_lib(get_abs_path(folder, ent->d_name), libname);
+                    file_name0 = get_abs_path(folder, ent->d_name);
+                    if (get_lib(file_name0, libname) != NULL){
+                        return get_lib(file_name0, libname);
                     }
                 } else {
-                    fprintf(stdout, "\n\nCHECKED\n");
+                    //fprintf(stdout, "\nCHECKED\n");
                 }
             }
         }
+        free(file_name0);
         closedir (dir);
         return NULL;
     } else {
         // could not open directory
-        perror ("Error when open directory: ");
+        perror ("Error opendir(): ");
         return NULL;
     }
     return NULL;
 }
 
 int is_lib(const char *filename) { 
-    fprintf(stdout, "file name parsed to is_txt() %s\n", filename);
-    if (strcmp(get_filename_ext(filename),".so") == 0){
+    //fprintf(stdout, "file name parsed to is_lib() %s\n", filename);
+    char *ext = get_filename_ext(filename);
+    if (strcmp(ext,".so") == 0){
         return 1;
     } else {
         return 0;
@@ -590,7 +595,7 @@ int is_lib(const char *filename) {
 
 char *get_filename_ext(const char *filename) {
     char *dot = strrchr(filename, '.');
-    fprintf(stdout, "dot %s\n", dot);
+    //fprintf(stdout, "dot %s\n", dot);
     if(!dot || dot == filename) 
         return "";
     return dot;

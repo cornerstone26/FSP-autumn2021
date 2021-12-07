@@ -30,8 +30,10 @@ static char *g_plugin_purpose = "Check type of a file";
 static char *g_plugin_author = "Nguyen Hong Hanh";
 
 #define OPT_TEXT "txt"
+//#define OPT_C "c"
 
 static int is_txt(const char *filename);
+//static int is_c(const char *filename);
 static char *get_filename_ext(const char *filename);
 
 static struct plugin_option g_po_arr[] = {
@@ -54,6 +56,15 @@ static struct plugin_option g_po_arr[] = {
         },
         "Text file"
     },
+
+    // {
+    //     {
+    //         OPT_C,
+    //         no_argument,
+    //         0, 0,
+    //     },
+    //     "C file"
+    // },
    
 };
 
@@ -123,7 +134,11 @@ int plugin_process_file(const char *fname,
     for (size_t i = 0; i < in_opts_len; i++) {
         if (!strcmp(in_opts[i].name, OPT_TEXT)) {
             ret = is_txt(fname);
-        }   
+        }  
+        // if (!strcmp(in_opts[i].name, OPT_C)) {
+        //     ret = is_c(fname);
+        // } 
+ 
     }
     
     END:
@@ -137,7 +152,7 @@ int plugin_process_file(const char *fname,
 }        
 
 int is_txt(const char *filename) { 
-    fprintf(stdout, "file name parsed to is_txt() %s\n", filename);
+    if (getenv("LAB1DEBUG")) fprintf(stdout, "file name parsed to is_txt() %s\n", filename);
     if (strcmp(get_filename_ext(filename),".txt") == 0){
         return 1;
     } else {
@@ -145,10 +160,18 @@ int is_txt(const char *filename) {
     }
 }
 
+// int is_c(const char *filename) { 
+//     if (getenv("LAB1DEBUG")) fprintf(stdout, "file name parsed to is_c() %s\n", filename);
+//     if (strcmp(get_filename_ext(filename),".c") == 0){
+//         return 1;
+//     } else {
+//         return 0;
+//     }
+// }
+
 char *get_filename_ext(const char *filename) {
-    
     char *dot = strrchr(filename, '.');
-    fprintf(stdout, "dot %s\n", dot);
+    if (getenv("LAB1DEBUG")) fprintf(stdout, "ext of the file %s\n", dot);
     if(!dot || dot == filename) 
         return "";
     return dot;

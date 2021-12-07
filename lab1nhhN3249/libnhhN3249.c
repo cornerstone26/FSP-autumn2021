@@ -19,7 +19,6 @@ static char *g_plugin_author = "Nguyen Hong Hanh N3249";
 
 
 #define OPT_BIT_SEQ "bit-seq"
-#define OPT_TXT "txt"
 
 int bit_seq_match(FILE *pFile, long long pattern, size_t pSize);
 long long get_pattern(char* pat);
@@ -74,7 +73,7 @@ int plugin_process_file(const char *fname,
     
     char *DEBUG = getenv("LAB1DEBUG");     
     
-    printf("\nargument parsed to plugin_process_file fname %s, in_opts %s, in_opts_len %ld\n\n", fname, in_opts[0].name , in_opts_len);
+    //printf("\nargument parsed to plugin_process_file fname %s, in_opts %s, in_opts_len %ld\n\n", fname, in_opts[0].name , in_opts_len);
     if (!fname || !in_opts || !in_opts_len) {   // thiếu tham số truyền vào
         errno = EINVAL;                         
         return -1;
@@ -144,7 +143,7 @@ int plugin_process_file(const char *fname,
         //printf ("pattern after processing %s\n", pat);
       }
       
-      printf("pattern size %ld \n", pat_size);
+      //printf("pattern size %ld \n", pat_size);
     }
     
     if (!got_bit_seq) {
@@ -164,18 +163,19 @@ int plugin_process_file(const char *fname,
         ret = 1;
         //fprintf(stdout, "%s\n",fname);
     } else if (res == 1){
-      fprintf(stdout, "Not found\n");
+      //fprintf(stdout, "Not found\n");
       ret = 0;
     } 
     
-    printf ("pattern in the end of function %s\n", pat);
-    errno = saved_errno;
+    //printf ("pattern in the end of function %s\n", pat);
+    errno = saved_errno; 
+    fclose(pFile);
     return ret;
 }  
 
 int bit_seq_match(FILE *pFile, long long pattern, size_t pSize){
   size_t fSize;
-  char * buffer;
+  char *buffer;
   size_t result;
 
   
@@ -188,7 +188,7 @@ int bit_seq_match(FILE *pFile, long long pattern, size_t pSize){
   fseek (pFile , 0 , SEEK_END);
   fSize = ftell (pFile);
   rewind (pFile);
-  printf("%lld %ld %ld\n", pattern, pSize, fSize);
+  //printf("%lld %ld %ld\n", pattern, pSize, fSize);
   // allocate memory to contain the whole file:
   buffer = (char*) malloc (sizeof(char) *fSize);
   if (buffer == NULL) {
@@ -218,7 +218,7 @@ int bit_seq_match(FILE *pFile, long long pattern, size_t pSize){
     }
   }
      
-  fclose (pFile);
+  //fclose (pFile);
   free (buffer);
   return 1;
   
