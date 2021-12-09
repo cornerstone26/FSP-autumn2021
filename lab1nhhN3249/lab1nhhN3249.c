@@ -27,9 +27,10 @@ static struct option *longopts = NULL;
 static int opts_to_pass2_len = 0;
 static struct option *opts_to_pass2 = NULL;
 static struct option *longopts2 = NULL;
-static char *folder;
+static char *folder_working;
 static char *folder_lib;
 static int need_lib2;
+static char **lib_name;
 
 typedef int (*pgi_func_t)(struct plugin_info*);
 static pgi_func_t pgi_func = NULL;
@@ -38,8 +39,8 @@ static void *func = NULL;
 static void *func1 = NULL;
 
 static int search_dir(char *folder, int aflag, int oflag, int nflag);
-static char *get_abs_path(char *folder, char*file_name);
-static char *get_lib(char* folder, char *libname);
+static void get_abs_path(char *path, char *folder, char*file_name);
+static void get_lib(char* folder, char *libname, int i);
 static int is_lib(const char *filename);
 static char *get_filename_ext(const char *filename);
 
@@ -119,25 +120,25 @@ int main(int argc, char *argv[]) {
         fprintf(stdout,"\n");
     }
     int num_iter = need_lib2 + 1;
-    char **lib_name = (char**)malloc(num_iter * sizeof(char*)); //NULL;
+    lib_name = (char**)malloc(num_iter * sizeof(char*)); //NULL;
     for (int i = 0; i < num_iter; ++i){
-        lib_name[i] = (char*)malloc(sizeof(argv[i + 1]));
+        lib_name[i] = (char*)malloc(sizeof(char)*PATH_MAX);
     }
     
-    folder = malloc(sizeof(char)*PATH_MAX);
+    folder_working = malloc(sizeof(char)*PATH_MAX);
     folder_lib = malloc(sizeof(char)*PATH_MAX);
 
-    if (getcwd(folder, PATH_MAX) != NULL) {
-           if (DEBUG) fprintf(stdout, "Current working dir: %s\n", folder);
+    if (getcwd(folder_working, PATH_MAX) != NULL) {
+           if (DEBUG) fprintf(stdout, "Current working dir: %s\n", folder_working);
         } else {
             if (DEBUG) perror("getcwd() error: ");
             goto END;
     }
 
     if (pvalue != NULL){
-        folder_lib = pvalue;
+        strcpy(folder_lib, pvalue);
     } else {
-        folder_lib = folder;
+        strcpy(folder_lib, folder_working);
     }
 
 
@@ -154,7 +155,7 @@ int main(int argc, char *argv[]) {
     // Name of the main lib. Should be passed as the first argument.
 
     for (int i = 0; i < num_iter; ++i){
-        lib_name[i] = get_lib(folder_lib, argv[i+1]);
+        get_lib(folder_lib, argv[i+1], i);
     }
             
     if (DEBUG) fprintf(stdout, "\nUsing libraries:\n %s\n %s\n", lib_name[0], lib_name[1]);
@@ -397,7 +398,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    ret = search_dir(folder, aflag, oflag, nflag);
+    ret = search_dir(folder_working, aflag, oflag, nflag);
     fprintf(stdout, "\n%d file(s) have been found\n", count);
     
     END:
@@ -422,15 +423,15 @@ int main(int argc, char *argv[]) {
     }
     
     if (lib_name) free(lib_name);
-    if (folder) free(folder);
-    //if (folder_lib) free (folder_lib);
+    if (folder_working) free(folder_working);
+    if (folder_lib) free (folder_lib);
     
     return 0;
 }
 
 int search_dir(char *folder, int aflag, int oflag, int nflag){
     if (getenv("LAB1DEBUG")) fprintf(stdout, "\n\nWORKING FOLDER %s\n", folder);
-    char *file_name0 = NULL;
+    char file_name0[255] = "";
 
     //char *file_name0 = malloc(sizeof(char)*PATH_MAX*2);
     if (folder == NULL){
@@ -445,7 +446,7 @@ int search_dir(char *folder, int aflag, int oflag, int nflag){
         /* Parse all the files within directory */
         while ((ent = readdir (dir)) != NULL) {
             if (ent->d_type == DT_REG){
-                file_name0 = get_abs_path(folder, ent->d_name);
+                get_abs_path(file_name0, folder, ent->d_name);
                 if (getenv("LAB1DEBUG")) printf ("\nCHECKING FILE: %s\n", file_name0);
                 if (file_name0 != NULL){
                     // Call plugin_process_file()
@@ -501,19 +502,19 @@ int search_dir(char *folder, int aflag, int oflag, int nflag){
                     }                
                 } else {
                     perror("Error when getting absolute path file: ");
-                    if (file_name0) free(file_name0);
+                    //if (file_name0) free(file_name0);
                     return -1;
                 }
                 
             } else if (ent->d_type == DT_DIR){
                
                 if ((strcmp(ent->d_name, ".") != 0) && (strcmp(ent->d_name, "..") != 0)){
-                    file_name0 = get_abs_path(folder, ent->d_name);
+                    get_abs_path(file_name0, folder, ent->d_name);
                     search_dir(file_name0, aflag, oflag, nflag);
                 } 
             }
         }
-        free(file_name0);
+        //free(file_name0);
         closedir (dir);
         return 1;
     } else {
@@ -525,62 +526,60 @@ int search_dir(char *folder, int aflag, int oflag, int nflag){
 }
 
 
-char *get_abs_path (char *dir, char *fname){
-    char *path = malloc(sizeof(char)*PATH_MAX*2);
+void get_abs_path (char *path, char *dir, char *fname){
+    //char *path = malloc(sizeof(char)*PATH_MAX*2);
+    //printf("\nBefore calling func: path %s dir %s fname %s\n", path, dir, fname);
     strcpy(path, dir);
     strcat(path, "/");
-    strcat(path, fname);
-    return path;
+    strcat(path, fname);    
+    //printf("\npath %s", path);
 }
 
-char *get_lib(char* folder, char *libname){
-    
-    char *file_name0 = NULL;
-    //char *file_name0 = malloc(sizeof(char)*PATH_MAX*2);
+void get_lib(char* folder, char *libname, int i){
+    char file_name0[255] = "";
     DIR *dir;
     struct dirent *ent;
     if ((dir = opendir (folder)) != NULL) {
-        //printf ("\nFolder lib opened\n");
+        //printf ("\nFolder lib opened");
         /* Parse all the files within directory */
         while ((ent = readdir (dir)) != NULL) {
             if (ent->d_type == DT_REG){
-                file_name0 = get_abs_path(folder, ent->d_name);
-                //printf ("\n\n FILE LIB: %s\n", get_abs_path(folder, ent->d_name));
+                get_abs_path(file_name0, folder, ent->d_name);
                 if (file_name0 != NULL){
                     if (is_lib(file_name0)){
                         //printf ("\n\n %s %s\n", ent->d_name, libname);
                         if (strcmp(ent->d_name, libname) == 0){
+                            strcpy(lib_name[i], file_name0);
                             closedir (dir);
-                            return file_name0;
+                            return;
                         }
                     }
                 } else {
                     perror("Error when getting absolute path file: ");
-                    return NULL;
+                    return;
                 }
                 
             } else if (ent->d_type == DT_DIR){
-                //fprintf(stdout, "\n\nSUBFOLDER LIB %s\n", folder);
+                
                 if ((strcmp(ent->d_name, ".") != 0) && (strcmp(ent->d_name, "..") != 0)){
-                    file_name0 = get_abs_path(folder, ent->d_name);
-                    if (get_lib(file_name0, libname) != NULL){
-                        closedir (dir);
-                        return get_lib(file_name0, libname);
-                    }
+                    //fprintf(stdout, "\n\nSUBFOLDER LIB %s\n", folder);
+                    get_abs_path(file_name0, folder, ent->d_name);
+                    //printf("\nCall recursively\n");
+                    get_lib(file_name0, libname, i);
                 } else {
                     //fprintf(stdout, "\nCHECKED\n");
                 }
             }
         }
-        free(file_name0);
+        //perror ("\nReach end ");
         closedir (dir);
-        return NULL;
+        return;
     } else {
         // could not open directory
         perror ("Error opendir(): ");
-        return NULL;
+        return;
     }
-    return NULL;
+    
 }
 
 int is_lib(const char *filename) { 
