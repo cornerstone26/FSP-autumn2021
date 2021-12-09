@@ -108,9 +108,7 @@ int main(int argc, char *argv[]) {
     }
 
     START: ;
-    if (DEBUG){
-        fprintf(stdout, "\nDEBUG: Short options: aflag = %d, oflag = %d, nflag = %d, vflag = %d, hflag = %d, pvalue = %s\n", aflag, oflag, nflag, vflag, hflag, pvalue);
-    }
+    
 
     if (DEBUG){
         fprintf(stdout,"\nargv[]: ");
@@ -120,6 +118,10 @@ int main(int argc, char *argv[]) {
         fprintf(stdout,"\n");
     }
     int num_iter = need_lib2 + 1;
+
+    if (DEBUG){
+        fprintf(stdout, "\nDEBUG: Short options: aflag = %d, oflag = %d, nflag = %d, vflag = %d, hflag = %d, pvalue = %s, num_iter = %d\n", aflag, oflag, nflag, vflag, hflag, pvalue, num_iter);
+    }
     lib_name = (char**)malloc(num_iter * sizeof(char*)); //NULL;
     for (int i = 0; i < num_iter; ++i){
         lib_name[i] = (char*)malloc(sizeof(char)*PATH_MAX);
@@ -539,12 +541,14 @@ void get_lib(char* folder, char *libname, int i){
     char file_name0[255] = "";
     DIR *dir;
     struct dirent *ent;
+    //fprintf(stdout, "\n\nFOLDER LIB %s\n", folder);
     if ((dir = opendir (folder)) != NULL) {
         //printf ("\nFolder lib opened");
         /* Parse all the files within directory */
         while ((ent = readdir (dir)) != NULL) {
             if (ent->d_type == DT_REG){
                 get_abs_path(file_name0, folder, ent->d_name);
+                //printf("\nFILE LIB %s\n", file_name0);
                 if (file_name0 != NULL){
                     if (is_lib(file_name0)){
                         //printf ("\n\n %s %s\n", ent->d_name, libname);
@@ -562,7 +566,7 @@ void get_lib(char* folder, char *libname, int i){
             } else if (ent->d_type == DT_DIR){
                 
                 if ((strcmp(ent->d_name, ".") != 0) && (strcmp(ent->d_name, "..") != 0)){
-                    //fprintf(stdout, "\n\nSUBFOLDER LIB %s\n", folder);
+                    fprintf(stdout, "\n\nSUBFOLDER LIB %s\n", folder);
                     get_abs_path(file_name0, folder, ent->d_name);
                     //printf("\nCall recursively\n");
                     get_lib(file_name0, libname, i);
