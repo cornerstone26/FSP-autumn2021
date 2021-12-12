@@ -12,7 +12,7 @@ lab1nhhN3249
 ------------
 Программа для вызова из плагина функции проверки файла. Дополнительно выводит информацию о плагине.
 Пример запуска:
- $ ./lab1nhhN3249 libnhhN3249.so lib_typefile.so -P /home/hanhnguyen26/Downloads -O --bit-seq 0x8ed187d0b0d1 --txt
+ $ ./lab1nhhN3249 -P /home/hanhnguyen26/Downloads -O --bit-seq 0x8ed187d0b0d1 --txt
 
 03. libnhhN3249.so
 -------------
