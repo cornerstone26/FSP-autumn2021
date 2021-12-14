@@ -20,7 +20,7 @@ static char *g_plugin_author = "Nguyen Hong Hanh N3249";
 
 #define OPT_BIT_SEQ "bit-seq"
 
-int bit_seq_match(FILE *pFile, long long pattern, size_t pSize);
+int bit_seq_match(unsigned char *buffer, long long pattern, size_t pSize, size_t fSize);
 long long get_pattern(char* pat);
 
 static struct plugin_option g_po_arr[] = {
@@ -69,10 +69,38 @@ int plugin_process_file(const char *fname,
         size_t in_opts_len) {               
 
     // Return error by default
-    int ret = -1;                           
+    int ret = -1;   
+    
+    // Pointer to file mapping
+    unsigned char *ptr = NULL;                        
     
     char *DEBUG = getenv("LAB1DEBUG");     
     
+    int saved_errno = 0;
+    
+    int fd = open(fname, O_RDONLY);
+    if (fd < 0) {
+        // errno is set by open()
+        return -1;
+    }
+    
+    struct stat st = {0};
+    int res = fstat(fd, &st);
+    if (res < 0) {
+        saved_errno = errno;
+        goto END;
+    }
+    
+    // Check that size of file is > 0
+    if (st.st_size == 0) {
+        if (DEBUG) {
+            fprintf(stderr, "DEBUG: %s: File size should be > 0\n",
+                g_lib_name);
+        }
+        saved_errno = ERANGE;
+        goto END;
+    }
+
     //printf("\nargument parsed to plugin_process_file fname %s, in_opts %s, in_opts_len %ld\n\n", fname, in_opts[0].name , in_opts_len);
     if (!fname || !in_opts || !in_opts_len) {   // thiếu tham số truyền vào
         errno = EINVAL;                         
@@ -85,7 +113,9 @@ int plugin_process_file(const char *fname,
                 g_lib_name, in_opts[i].name, (char*)in_opts[i].flag);
         }
     }
-    
+
+    //process pattern 
+
     char* pat = NULL;
     
     size_t pat_size = 0;
@@ -155,71 +185,33 @@ int plugin_process_file(const char *fname,
         return -1;
     }
     
-    int saved_errno = 0;    //khai báo lỗi
-    FILE *pFile = fopen(fname, "rb");
+    ptr = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (ptr == MAP_FAILED) {
+        saved_errno = errno;
+        goto END;
+    }
+    //FILE *pFile = fopen(fname, "rb");
 
-    int res = bit_seq_match(pFile, pattern, pat_size);
-    if (res == 0){
-        ret = 1;
-        //fprintf(stdout, "%s\n",fname);
-    } else if (res == 1){
-      //fprintf(stdout, "Not found\n");
-      ret = 0;
-    } 
-    
-    //printf ("pattern in the end of function %s\n", pat);
+    ret = bit_seq_match(ptr, pattern, pat_size, st.st_size);
+
+END:
     errno = saved_errno; 
-    fclose(pFile);
-    
+    close(fd);
+    if (ptr != MAP_FAILED && ptr != NULL) munmap(ptr, st.st_size);
+
     return ret;
 }  
 
-int bit_seq_match(FILE *pFile, long long pattern, size_t pSize){
-  size_t fSize;
-  char *buffer;
-  size_t result;
-
-  
-  if (pFile == NULL) {
-    fputs ("File error",stderr); 
-    exit (1);
-    }
-
-  // obtain file size:
-  fseek (pFile , 0 , SEEK_END);
-  fSize = ftell (pFile);
-  rewind (pFile);
-  //printf("%lld %ld %ld\n", pattern, pSize, fSize);
-  // allocate memory to contain the whole file:
-  buffer = (char*) malloc (sizeof(char) *fSize);
-  if (buffer == NULL) {
-    fputs ("Memory error",stderr); 
-    exit (2);
-    }
-
-  // copy the file into the buffer:
-  result = fread (buffer,1,fSize,pFile);
-  if (result != fSize) {
-    fputs ("Reading error",stderr); 
-    exit (3);
-    }
-  /* the whole file is now loaded in the memory buffer. */
-
-  // search for bit pattern in file
-  
-  //fprintf(stdout, "buffer %s\n", buffer);
+int bit_seq_match(unsigned char* buffer, long long pattern, size_t pSize, size_t fSize){
   size_t pos = 0;
   while (fSize - pos >= pSize){
     if (memcmp(&buffer[pos], &pattern, pSize) == 0){
-      //fprintf(stdout, "matched in %ld %x\n", pos, buffer[pos]);
       return 1;
     } else {
-      //fprintf(stdout, "not found in %ld %x \n", pos, buffer[pos]);
       pos++;
     }
   }
-     
-  if (buffer) free (buffer);
+  
   return 0;
   
 }

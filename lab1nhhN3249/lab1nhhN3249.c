@@ -162,7 +162,7 @@ int main(int argc, char *argv[]) {
     count_so(folder_lib);
     num_iter = count_lib;
     if ((num_iter < 2) && (need_lib2 == 1)){
-        fprintf(stderr, "ERROR: The program need more dynamic libraries (*.so)\n");
+        fprintf(stderr, "ERROR: The program needs more dynamic libraries (*.so)\n");
         goto END;
     }
 
@@ -245,7 +245,7 @@ int main(int argc, char *argv[]) {
             }
         }
         fprintf(stdout, "\n");
-        return 1;
+        goto END;
     }    
 
     if (hflag){
@@ -266,7 +266,7 @@ int main(int argc, char *argv[]) {
                 return -1;
             }
         }
-        return 1;
+        goto END;
     }
 
     // Now process options for the lib
@@ -314,7 +314,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-
+    strcpy(folder_working, argv[argc - 1]);
     search_dir(folder_working, plugin, aflag, oflag, nflag);
     fprintf(stdout, "\n%d file(s) have been found\n", count);
     
@@ -346,9 +346,6 @@ int main(int argc, char *argv[]) {
 void search_dir(char *folder, struct lib plugin[], int aflag, int oflag, int nflag){
     if (getenv("LAB1DEBUG")) fprintf(stdout, "\n\nWORKING FOLDER %s\n", folder);
     //char file_name0[255] = "";
-
-    char *file_name0 = malloc(sizeof(char)*PATH_MAX*2);
-
     if (folder == NULL){
         return;
     }
@@ -356,6 +353,7 @@ void search_dir(char *folder, struct lib plugin[], int aflag, int oflag, int nfl
     DIR *dir;
     struct dirent *ent;
     if ((dir = opendir (folder)) != NULL) {
+        char *file_name0 = malloc(sizeof(char)*PATH_MAX*2);
         //printf ("\nFolder opened\n");
         /* Parse all the files within directory */
         while ((ent = readdir (dir)) != NULL) {
@@ -444,12 +442,12 @@ void get_abs_path (char *path, char *dir, char *fname){
 }
 
 int get_lib(char* folder, void* dl[]){
-    //char file_name0[255] = "";
-    char *file_name0 = malloc(sizeof(char)*PATH_MAX*2);
+    
     DIR *dir;
     struct dirent *ent;
     int i = 0;
     if ((dir = opendir (folder)) != NULL) {
+        char *file_name0 = malloc(sizeof(char)*PATH_MAX*2);
         /* Parse all the files within directory */
         while ((ent = readdir (dir)) != NULL) {
             if (ent->d_type == DT_REG){
@@ -462,7 +460,7 @@ int get_lib(char* folder, void* dl[]){
                             fprintf(stderr, "ERROR: dlopen() failed: %s\n", dlerror());
                             return -1;
                         } else {
-                            if (getenv("LAB1DEBUG")) printf("\n%s opened", file_name0);
+                            if (getenv("LAB1DEBUG")) fprintf(stdout,"\n%s opened", file_name0);
                             i++;
                         }
                     }
