@@ -170,6 +170,7 @@ int plugin_process_file(const char *fname,
     //printf ("pattern in the end of function %s\n", pat);
     errno = saved_errno; 
     fclose(pFile);
+    
     return ret;
 }  
 
@@ -211,16 +212,15 @@ int bit_seq_match(FILE *pFile, long long pattern, size_t pSize){
   while (fSize - pos >= pSize){
     if (memcmp(&buffer[pos], &pattern, pSize) == 0){
       //fprintf(stdout, "matched in %ld %x\n", pos, buffer[pos]);
-      return 0;
+      return 1;
     } else {
       //fprintf(stdout, "not found in %ld %x \n", pos, buffer[pos]);
       pos++;
     }
   }
      
-  //fclose (pFile);
   if (buffer) free (buffer);
-  return 1;
+  return 0;
   
 }
 
