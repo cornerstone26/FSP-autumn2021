@@ -104,11 +104,11 @@ int main(int argc, char *argv[]) {
                 break;
             case 'v':
                 vflag = 1;
-                need_lib2 = 1;
+                //need_lib2 = 1;
                 break;
             case 'h':
                 hflag = 1;
-                need_lib2 = 1;
+                //need_lib2 = 1;
                 break;    
             case 'P':
                 pvalue = optarg;
@@ -175,11 +175,11 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < num_iter; ++i){
         
         // Check for plugin_get_info() func
-        if (!dlsym(dl[i], "plugin_get_info")) {
+        plugin[i].pgi_info = dlsym(dl[i], "plugin_get_info");
+        if (!plugin[i].pgi_info) {
             fprintf(stderr, "ERROR: dlsym() failed: %s\n", dlerror());
             goto END;
         } else {
-            plugin[i].pgi_info = dlsym(dl[i], "plugin_get_info");
             ret = plugin[i].pgi_info(&pi[i]);
             if (ret < 0){
                 fprintf(stderr, "ERROR: plugin_get_info() failed\n");
@@ -330,7 +330,7 @@ int main(int argc, char *argv[]) {
         free(plugin);
     }
 
-    for (int i = 0; i < num_iter; i++){        
+    for (int i = 0; i < num_iter; i++){   
         dlclose(dl[i]);
     }
 
@@ -345,9 +345,10 @@ int main(int argc, char *argv[]) {
 //recursive func
 void search_dir(char *folder, struct lib plugin[], int aflag, int oflag, int nflag){
     if (getenv("LAB1DEBUG")) fprintf(stdout, "\n\nWORKING FOLDER %s\n", folder);
-    char file_name0[255] = "";
+    //char file_name0[255] = "";
 
-    //char *file_name0 = malloc(sizeof(char)*PATH_MAX*2);
+    char *file_name0 = malloc(sizeof(char)*PATH_MAX*2);
+
     if (folder == NULL){
         return;
     }
@@ -362,6 +363,7 @@ void search_dir(char *folder, struct lib plugin[], int aflag, int oflag, int nfl
                 get_abs_path(file_name0, folder, ent->d_name);
                 if (getenv("LAB1DEBUG")) printf ("\nCHECKING FILE: %s\n", file_name0);
                 if (file_name0 != NULL){
+                    
                     // Call plugin_process_file()
                     errno = 0;
                     int call = 0;
@@ -381,6 +383,7 @@ void search_dir(char *folder, struct lib plugin[], int aflag, int oflag, int nfl
                             }
                         }
                     }
+
                     if (getenv("LAB1DEBUG")) fprintf(stdout, "\nNumber of calls that return true %d / %d\n", return_true, call);
 
                 
@@ -403,7 +406,7 @@ void search_dir(char *folder, struct lib plugin[], int aflag, int oflag, int nfl
                         }
                     }
                     
-                
+                    
                 } else {
                         perror("Error when getting absolute path file: ");
                         return;
@@ -419,7 +422,7 @@ void search_dir(char *folder, struct lib plugin[], int aflag, int oflag, int nfl
             }
             
         }
-
+        free(file_name0);
         closedir (dir);
         return;
     } else {
@@ -441,7 +444,8 @@ void get_abs_path (char *path, char *dir, char *fname){
 }
 
 int get_lib(char* folder, void* dl[]){
-    char file_name0[255] = "";
+    //char file_name0[255] = "";
+    char *file_name0 = malloc(sizeof(char)*PATH_MAX*2);
     DIR *dir;
     struct dirent *ent;
     int i = 0;
@@ -469,6 +473,7 @@ int get_lib(char* folder, void* dl[]){
             }
         }
         //perror ("\nReach end ");
+        free(file_name0);
         closedir (dir);
         return 0;
 
