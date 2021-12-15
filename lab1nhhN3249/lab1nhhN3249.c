@@ -71,8 +71,8 @@ int main(int argc, char *argv[]) {
     char *DEBUG = getenv("LAB1DEBUG");
     // Minimum number of arguments is 3: 
     // $ program_name lib_name --opt1
-    if (argc < 2) {        
-        fprintf(stdout, "Usage: ./lab1nhhN3249 --options [value] \n");
+    if (argc < 3) {        
+        fprintf(stdout, "Usage: ./lab1nhhN3249 --options [value] /path/to/folder \nUse ./lab1nhhN3249 -h . for help\n");
         return 0;
     }
 
@@ -85,6 +85,9 @@ int main(int argc, char *argv[]) {
     char *pvalue = NULL;
     int short_opt;
     
+    // char **save_argv;
+    // save_argv = calloc(argc, sizeof(char*));
+    // memcpy(save_argv, argv, argc*sizeof(char*));
     need_lib2 = 0;
     opterr = 0;
     while ((short_opt = getopt(argc, argv, "-AONvhP:")) != -1){
@@ -104,11 +107,9 @@ int main(int argc, char *argv[]) {
                 break;
             case 'v':
                 vflag = 1;
-                //need_lib2 = 1;
                 break;
             case 'h':
                 hflag = 1;
-                //need_lib2 = 1;
                 break;    
             case 'P':
                 pvalue = optarg;
@@ -130,6 +131,9 @@ int main(int argc, char *argv[]) {
     }
 
     START: ;
+
+    //memcpy(argv, save_argv, argc*sizeof(char*));
+
     if (DEBUG){
         fprintf(stdout,"\nargv[]: ");
         for (int i = 0; i < argc; i++){
@@ -305,7 +309,7 @@ int main(int argc, char *argv[]) {
      
     if (getenv("LAB1DEBUG")) {
         for (int i = 0; i < num_iter; i++){
-            fprintf(stderr, "DEBUG: opts_to_pass_len = %ld\n", plugin[i].opts_to_pass_len);
+            fprintf(stderr, "MAIN DEBUG: opts_to_pass_len = %ld\n", plugin[i].opts_to_pass_len);
             for (size_t j = 0; j < plugin[i].opts_to_pass_len; j++) {
             fprintf(stderr, "DEBUG: passing option '%s' with arg '%s'\n",
                 (plugin[i].opts_to_pass[j]).name,
