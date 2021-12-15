@@ -113,6 +113,7 @@ int main(int argc, char *argv[]) {
                 break;    
             case 'P':
                 pvalue = optarg;
+                fprintf (stderr, "Option -%c requires an argument.\n", optopt);
                 break;
             case '?':
                 if (optopt == 'P'){
@@ -123,16 +124,14 @@ int main(int argc, char *argv[]) {
                 }              
         }
 
-        if (optind < argc){
-             if (argv[optind][1] == '-'){    // long option is detected 
-                goto START;
-            }
-        }
+        // if (optind < argc){
+        //      if (argv[optind][1] == '-'){    // long option is detected 
+        //         goto START;
+        //     }
+        // }
     }
 
-    START: ;
-
-    //memcpy(argv, save_argv, argc*sizeof(char*));
+    //START: ;
 
     if (DEBUG){
         fprintf(stdout,"\nargv[]: ");
@@ -318,7 +317,12 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    strcpy(folder_working, argv[argc - 1]);
+    if (strcmp(argv[argc-1], "./") == 0 || strcmp(argv[argc-1], ".") == 0){
+        
+    } else {
+        strcpy(folder_working, argv[argc - 1]);
+    }
+    
     search_dir(folder_working, plugin, aflag, oflag, nflag);
     fprintf(stdout, "\n%d file(s) have been found\n", count);
     
