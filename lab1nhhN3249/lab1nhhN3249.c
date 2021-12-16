@@ -85,9 +85,6 @@ int main(int argc, char *argv[]) {
     char *pvalue = NULL;
     int short_opt;
     
-    // char **save_argv;
-    // save_argv = calloc(argc, sizeof(char*));
-    // memcpy(save_argv, argv, argc*sizeof(char*));
     need_lib2 = 0;
     opterr = 0;
     while ((short_opt = getopt(argc, argv, "-AONvhP:")) != -1){
@@ -113,7 +110,6 @@ int main(int argc, char *argv[]) {
                 break;    
             case 'P':
                 pvalue = optarg;
-                fprintf (stderr, "Option -%c requires an argument.\n", optopt);
                 break;
             case '?':
                 if (optopt == 'P'){
